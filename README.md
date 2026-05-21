@@ -4,14 +4,22 @@ Personal collection of [Claude Code](https://github.com/anthropics/claude-code) 
 
 ## Install
 
+Project-local (writes to `./.claude/` or `./.agents/skills/` in the current repo):
+
 ```bash
 apm install trapple/skills
+```
+
+Machine-wide / user-global (writes to `~/.apm/` and is exposed to every Claude Code session):
+
+```bash
+apm install -g trapple/skills
 ```
 
 Or pin to a specific version:
 
 ```bash
-apm install trapple/skills#v0.1.0
+apm install -g trapple/skills#v0.1.0
 ```
 
 ## Included skills
@@ -44,8 +52,9 @@ Claude Code 向けに個人で作成したスキル集を、Microsoft の [APM (
 ### インストール
 
 ```bash
-apm install trapple/skills            # 最新
-apm install trapple/skills#v0.1.0     # バージョン固定
+apm install trapple/skills               # プロジェクトローカル（./.claude/ など）
+apm install -g trapple/skills            # マシン全体（~/.apm/ → 全 Claude Code セッションで利用可能）
+apm install -g trapple/skills#v0.1.0     # バージョン固定（global）
 ```
 
 ### 収録スキル
