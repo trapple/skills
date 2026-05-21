@@ -27,6 +27,7 @@ apm install -g trapple/skills#v0.1.0
 | Skill | Trigger | Description |
 |-------|---------|-------------|
 | `commit` | `commit`, `コミット`, `コミットして` | Analyze conversation history to extract the **Why** behind the change, split into multiple commits when there are multiple Whys, and write a Conventional Commits style message. |
+| `init-rules` | `init-rules`, `ルール導入`, `ルールテンプレート` | Copy bundled rule templates (Fail-Fast error handling, docs frontmatter policy, plan-mode output location, …) into the current project's `.claude/rules/`. Templates ship with the skill under `rules-templates/`. **Claude Code only** — relies on the `.claude/rules/` path-glob mechanism, which Codex / other agents (AGENTS.md-based) do not implement. |
 
 ## Why use APM for skills?
 
@@ -62,6 +63,7 @@ apm install -g trapple/skills#v0.1.0     # バージョン固定（global）
 | スキル | トリガー | 概要 |
 |-------|---------|------|
 | `commit` | `commit` / `コミット` / `コミットして` | 会話履歴を遡って変更の **Why** を抽出し、Why が複数あればコミットを分割、Conventional Commits 形式のメッセージで自動コミットする。 |
+| `init-rules` | `init-rules` / `ルール導入` / `ルールテンプレート` | スキルに同梱されたルールテンプレート（Fail-Fast エラーハンドリング、docs frontmatter 運用、plan モード出力先 など）をプロジェクトの `.claude/rules/` にコピーする。テンプレートは `rules-templates/` として skill ディレクトリに同梱。**Claude Code 専用** — `.claude/rules/` の path-glob 自動適用機構に依存しており、AGENTS.md ベースの Codex などでは効きません。 |
 
 ### なぜ APM 経由なのか
 
