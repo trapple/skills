@@ -22,6 +22,13 @@ Or pin to a specific version:
 apm install -g trapple/skills#v0.1.0
 ```
 
+Install only a specific skill (instead of the whole package):
+
+```bash
+apm install trapple/skills --skill commit
+apm install -g trapple/skills --skill commit
+```
+
 ## Included skills
 
 | Skill | Trigger | Description |
@@ -59,6 +66,8 @@ Claude Code 向けに個人で作成したスキル集を、Microsoft の [APM (
 apm install trapple/skills               # プロジェクトローカル（./.claude/ など）
 apm install -g trapple/skills            # マシン全体（~/.apm/ → 全 Claude Code セッションで利用可能）
 apm install -g trapple/skills#v0.1.0     # バージョン固定（global）
+apm install trapple/skills --skill commit       # 特定スキルのみ（パッケージ全体ではなく commit だけ）
+apm install -g trapple/skills --skill commit    # 同上をグローバルに
 ```
 
 ### 収録スキル
