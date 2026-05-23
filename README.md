@@ -40,6 +40,7 @@ dependencies:
 | `codex` | `codex`, `Codex`, `Codexに聞いて`, `Codexで` | Thin wrapper that forwards the user's prompt to the OpenAI Codex CLI via `codex exec "$PROMPT" < /dev/null` (stdin must be closed or it hangs waiting for additional input). Requires the `codex` CLI on PATH. |
 | `create-skill` | `スキル作って`, `Skill作って`, `create skill` | Meta-skill that scaffolds a new Claude Code skill at `~/.claude/skills/<name>/SKILL.md` (or `.claude/skills/<name>/SKILL.md` for project scope) with correct frontmatter. Explicitly distinguishes skills from legacy single-file commands. |
 | `pbcopy` | `copy`, `コピー`, `コピーして` | Copy file contents or arbitrary text to the macOS clipboard via `pbcopy`, using heredocs to handle special characters safely. **macOS only** — `pbcopy` is not available on Linux/Windows. |
+| `sync-skill` | `sync-skill`, `スキル同期`, `スキルインポート`, `スキル取り込み` | Import or update a skill from another project (`.claude/skills/`, `.apm/skills/`, or a sibling subdirectory package) into this repository's root, with automatic README table updates. Intended to be run from the `trapple/skills` repo root. |
 
 ## Why use APM for skills?
 
@@ -100,6 +101,7 @@ dependencies:
 | `codex` | `codex` / `Codex` / `Codexに聞いて` / `Codexで` | ユーザーのプロンプトを OpenAI Codex CLI に転送する薄いラッパー。`codex exec "$PROMPT" < /dev/null` で stdin を閉じて呼ぶ（閉じないとハングする）。`codex` コマンドが PATH に必要。 |
 | `create-skill` | `スキル作って` / `Skill作って` / `create skill` | 新しい Claude Code skill を `~/.claude/skills/<name>/SKILL.md`（またはプロジェクト側 `.claude/skills/<name>/SKILL.md`）に正しい frontmatter 付きで生成する meta skill。旧形式の単一ファイル command との混同を明示的に防ぐ。 |
 | `pbcopy` | `copy` / `コピー` / `コピーして` | ファイル内容や任意のテキストを macOS の `pbcopy` でクリップボードにコピーする。特殊文字はヒアドキュメントで安全に扱う。**macOS 専用** — Linux/Windows では `pbcopy` が無い。 |
+| `sync-skill` | `sync-skill` / `スキル同期` / `スキルインポート` / `スキル取り込み` | 別 PJ の `.claude/skills/` / `.apm/skills/` / リポジトリ直下のサブディレクトリパッケージにあるスキルを、本リポジトリのルート直下に取り込む / 更新する。同名スキルがあれば差分を提示して update、無ければ import。README の英語表・日本語表も自動で追記/更新する。**`trapple/skills` リポジトリのルートで実行する前提**。 |
 
 ### なぜ APM 経由なのか
 
