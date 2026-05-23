@@ -1,32 +1,34 @@
 # trapple/skills
 
-Personal collection of [Claude Code](https://github.com/anthropics/claude-code) skills, packaged for the [Agent Package Manager (APM)](https://github.com/microsoft/apm).
+Personal collection of [Claude Code](https://github.com/anthropics/claude-code) skills, distributed as [APM (Agent Package Manager)](https://github.com/microsoft/apm) **subdirectory packages** — each top-level directory in this repo is an independently installable skill.
 
 ## Install
 
-Project-local (writes to `./.claude/` or `./.agents/skills/` in the current repo):
+Install an individual skill (machine-wide / user-global, exposed to every Claude Code session):
 
 ```bash
-apm install trapple/skills
+apm install -g trapple/skills/<skill-name>
 ```
 
-Machine-wide / user-global (writes to `~/.apm/` and is exposed to every Claude Code session):
+Project-local (writes to `./.claude/skills/` or `./.agents/skills/` in the current repo):
 
 ```bash
-apm install -g trapple/skills
+apm install trapple/skills/<skill-name>
 ```
 
-Or pin to a specific version:
+Pin to a specific version:
 
 ```bash
-apm install -g trapple/skills#v0.1.0
+apm install -g trapple/skills/<skill-name>#v0.1.0
 ```
 
-Install only a specific skill (instead of the whole package):
+Or add to a project's `apm.yml`:
 
-```bash
-apm install trapple/skills --skill commit
-apm install -g trapple/skills --skill commit
+```yaml
+dependencies:
+  apm:
+    - trapple/skills/commit
+    - trapple/skills/sync-skill
 ```
 
 ## Included skills
@@ -58,16 +60,35 @@ See [microsoft/apm](https://github.com/microsoft/apm) for details.
 
 ## 日本語
 
-Claude Code 向けに個人で作成したスキル集を、Microsoft の [APM (Agent Package Manager)](https://github.com/microsoft/apm) パッケージとして配布するリポジトリです。
+Claude Code 向けに個人で作成したスキル集を、Microsoft の [APM (Agent Package Manager)](https://github.com/microsoft/apm) の **subdirectory package** パターンで配布するリポジトリです。各トップレベルディレクトリが独立したスキルパッケージとしてインストール可能です。
 
 ### インストール
 
+個別スキルのインストール（マシン全体 / グローバル）:
+
 ```bash
-apm install trapple/skills               # プロジェクトローカル（./.claude/ など）
-apm install -g trapple/skills            # マシン全体（~/.apm/ → 全 Claude Code セッションで利用可能）
-apm install -g trapple/skills#v0.1.0     # バージョン固定（global）
-apm install trapple/skills --skill commit       # 特定スキルのみ（パッケージ全体ではなく commit だけ）
-apm install -g trapple/skills --skill commit    # 同上をグローバルに
+apm install -g trapple/skills/<skill-name>
+```
+
+プロジェクトローカル（`./.claude/skills/` などに展開）:
+
+```bash
+apm install trapple/skills/<skill-name>
+```
+
+バージョン固定:
+
+```bash
+apm install -g trapple/skills/<skill-name>#v0.1.0
+```
+
+`apm.yml` に依存として追加:
+
+```yaml
+dependencies:
+  apm:
+    - trapple/skills/commit
+    - trapple/skills/sync-skill
 ```
 
 ### 収録スキル
