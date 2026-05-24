@@ -42,6 +42,7 @@ dependencies:
 | `pbcopy` | `copy`, `コピー`, `コピーして` | Copy file contents or arbitrary text to the macOS clipboard via `pbcopy`, using heredocs to handle special characters safely. **macOS only** — `pbcopy` is not available on Linux/Windows. |
 | `sync-skill` | `sync-skill`, `スキル同期`, `スキルインポート`, `スキル取り込み` | Import or update a skill from another project (`.claude/skills/`, `.apm/skills/`, or a sibling subdirectory package) into this repository's root, with automatic README table updates. Intended to be run from the `trapple/skills` repo root. |
 | `cmux-read-screen` | proactive (dev logs / build output / errors) | Read the visible screen of an adjacent cmux pane via `cmux read-screen`. Useful for tailing dev server logs, build output, or terminal output in other panes without leaving the current Claude Code session. **Requires the cmux terminal multiplexer.** |
+| `session-log` | `session log`, `セッションログ`, `生ログ見せて`, `経緯見せて` | Pretty-prints the raw JSONL session log at `~/.claude/projects/<proj>/<uuid>.jsonl` into a human-readable transcript (user / assistant / tool_use / tool_result). Supports `--session`, `--list`, `--full`, `--tools-only`, `--max-chars`. **Requires `jq`.** |
 
 ## Why use APM for skills?
 
@@ -104,6 +105,7 @@ dependencies:
 | `pbcopy` | `copy` / `コピー` / `コピーして` | ファイル内容や任意のテキストを macOS の `pbcopy` でクリップボードにコピーする。特殊文字はヒアドキュメントで安全に扱う。**macOS 専用** — Linux/Windows では `pbcopy` が無い。 |
 | `sync-skill` | `sync-skill` / `スキル同期` / `スキルインポート` / `スキル取り込み` | 別 PJ の `.claude/skills/` / `.apm/skills/` / リポジトリ直下のサブディレクトリパッケージにあるスキルを、本リポジトリのルート直下に取り込む / 更新する。同名スキルがあれば差分を提示して update、無ければ import。README の英語表・日本語表も自動で追記/更新する。**`trapple/skills` リポジトリのルートで実行する前提**。 |
 | `cmux-read-screen` | 文脈トリガー（dev ログ / ビルド出力 / エラー調査） | cmux の隣ペインの画面内容を `cmux read-screen` で読み取る。タブ名指定 or 同一ワークスペース内から自動選択。dev サーバーのログ・ビルド出力・エラー調査に使う。**cmux ターミナルマルチプレクサが必要**。 |
+| `session-log` | `session log` / `セッションログ` / `生ログ見せて` / `経緯見せて` | `~/.claude/projects/<proj>/<uuid>.jsonl` に保存された Claude Code の生セッションログを user / assistant / tool_use / tool_result に整形して人間が読める形で出力する。`--session` / `--list` / `--full` / `--tools-only` / `--max-chars` をサポート。**`jq` 必須**。 |
 
 ### なぜ APM 経由なのか
 
