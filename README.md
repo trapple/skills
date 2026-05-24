@@ -43,6 +43,7 @@ dependencies:
 | `sync-skill` | `sync-skill`, `スキル同期`, `スキルインポート`, `スキル取り込み` | Import or update a skill from another project (`.claude/skills/`, `.apm/skills/`, or a sibling subdirectory package) into this repository's root, with automatic README table updates. Intended to be run from the `trapple/skills` repo root. |
 | `cmux-read-screen` | proactive (dev logs / build output / errors) | Read the visible screen of an adjacent cmux pane via `cmux read-screen`. Useful for tailing dev server logs, build output, or terminal output in other panes without leaving the current Claude Code session. **Requires the cmux terminal multiplexer.** |
 | `session-log` | `session log`, `セッションログ`, `生ログ見せて`, `経緯見せて` | Pretty-prints the raw JSONL session log at `~/.claude/projects/<proj>/<uuid>.jsonl` into a human-readable transcript (user / assistant / tool_use / tool_result). Supports `--session`, `--list`, `--full`, `--tools-only`, `--max-chars`. **Requires `jq`.** |
+| `x-search` | `x_search`, `x-search`, `xサーチ`, `Xで検索`, `Xで調べて`, `X検索`, `ツイッターで調べて`, `Twitterで調べて`, `Grok で X を検索` | Search X (Twitter) via Grok using Hermes Agent's `tools.x_search_tool`, called directly from the locally-pinned `hermes-agent` venv (installed once with `uv tool install`, no repeated git fetches). Returns Markdown with footnote-style URL citations. **Requires `uv`, xAI OAuth (`hermes auth add xai-oauth`), and an X Premium subscription.** |
 
 ## Why use APM for skills?
 
@@ -106,6 +107,7 @@ dependencies:
 | `sync-skill` | `sync-skill` / `スキル同期` / `スキルインポート` / `スキル取り込み` | 別 PJ の `.claude/skills/` / `.apm/skills/` / リポジトリ直下のサブディレクトリパッケージにあるスキルを、本リポジトリのルート直下に取り込む / 更新する。同名スキルがあれば差分を提示して update、無ければ import。README の英語表・日本語表も自動で追記/更新する。**`trapple/skills` リポジトリのルートで実行する前提**。 |
 | `cmux-read-screen` | 文脈トリガー（dev ログ / ビルド出力 / エラー調査） | cmux の隣ペインの画面内容を `cmux read-screen` で読み取る。タブ名指定 or 同一ワークスペース内から自動選択。dev サーバーのログ・ビルド出力・エラー調査に使う。**cmux ターミナルマルチプレクサが必要**。 |
 | `session-log` | `session log` / `セッションログ` / `生ログ見せて` / `経緯見せて` | `~/.claude/projects/<proj>/<uuid>.jsonl` に保存された Claude Code の生セッションログを user / assistant / tool_use / tool_result に整形して人間が読める形で出力する。`--session` / `--list` / `--full` / `--tools-only` / `--max-chars` をサポート。**`jq` 必須**。 |
+| `x-search` | `x_search` / `x-search` / `xサーチ` / `Xで検索` / `Xで調べて` / `X検索` / `ツイッターで調べて` / `Twitterで調べて` / `Grok で X を検索` | Hermes Agent の `tools.x_search_tool` を `uv tool install` でローカル固定した venv の Python から直接呼び出して X (Twitter) を Grok 検索する。脚注付き URL 引用入りの Markdown が返る (毎回 git fetch しない / ネットアクセスは初回インストール時のみ)。**`uv` / xAI OAuth (`hermes auth add xai-oauth`) / X Premium サブスクが必要**。 |
 
 ### なぜ APM 経由なのか
 
