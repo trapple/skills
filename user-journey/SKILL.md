@@ -22,7 +22,9 @@ SQLite (`data/user_journey.db`) に短文で蓄積したナレッジベース。
 - **仕様判断に迷ったとき** → ルール化された要件がないか確認
 - **ユーザーが新しい仕様・制約・ルールを表明したとき** → 追加 (write 操作なので要許可)
 
-## スキーマ
+## セットアップ
+
+スキーマ:
 
 ```sql
 CREATE TABLE user_journey (
@@ -30,6 +32,17 @@ CREATE TABLE user_journey (
   text TEXT NOT NULL
 );
 ```
+
+**初回利用時のみ**: DB ファイルとテーブルが無ければ作成する (read 操作より前に一度だけ)。
+
+```sh
+mkdir -p data
+sqlite3 data/user_journey.db "CREATE TABLE IF NOT EXISTS user_journey (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL)"
+```
+
+`data/user_journey.db` やテーブルが無い状態で検索すると `Error: no such table: user_journey`
+になるため、最初の操作時にテーブルの存在を確認し、無ければ上記で作成してから進める
+(`CREATE TABLE IF NOT EXISTS` なので既存環境では無害)。
 
 ## 操作
 
@@ -41,16 +54,16 @@ CREATE TABLE user_journey (
 sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%<keyword>%'"
 ```
 
-複数キーワード AND（例: 「Spotify でシングル優先のルール」を引き出す）:
+複数キーワード AND（例: 「エクスポート機能で CSV を優先するルール」を引き出す）:
 
 ```sh
-sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%Spotify%' AND text LIKE '%シングル%'"
+sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%エクスポート%' AND text LIKE '%CSV%'"
 ```
 
-複数キーワード OR（例: 「Apple Music か YouTube Music への言及」を集める）:
+複数キーワード OR（例: 「認証で OAuth か API キーへの言及」を集める）:
 
 ```sh
-sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%Apple Music%' OR text LIKE '%YouTube Music%'"
+sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%OAuth%' OR text LIKE '%APIキー%'"
 ```
 
 ### 全件列挙 (read - 許可不要)
@@ -68,8 +81,8 @@ sqlite3 data/user_journey.db "SELECT id, text FROM user_journey ORDER BY id"
 - **1〜3 件**: 各レコードの `id` と `text` をそのまま箇条書きで提示。
   ```
   関連する既存要件:
-  - id 7: Spotifyでシングルとアルバムに同じ曲がある場合はシングルを採用する
-  - id 8: Spotifyで日本語版と英語版がある曲は基本的に日本語版を採用
+  - id 7: エクスポートで CSV と JSON の両方を選べる場合は CSV を既定にする
+  - id 8: エクスポートのファイル名は日付プレフィックス (YYYY-MM-DD) を付ける
   ```
 - **4〜9 件**: 件数を伝えて重要度の高い 3〜5 件だけ抜粋、残りは「他 N 件」と要約。
   ユーザーが全件を求めたら追加で列挙する。
@@ -119,7 +132,7 @@ text の規約 (それぞれ理由付き):
 - **短文 1〜2 文** — 全文 LIKE 検索なので、長文だとノイズが増えてヒット率が下がる。
 - **文脈に依存しない自己完結した記述** — 「これ」「先ほどの」のような指示語を使わない。
   キーワード検索でいきなり 1 件だけ引いても意味が通るように。
-- **機能名や対象ドメインを冒頭に含める** (例: 「Spotify 検索で〜」「ビルドプロセスで〜」) —
+- **機能名や対象ドメインを冒頭に含める** (例: 「エクスポート機能で〜」「ビルドプロセスで〜」) —
   ドメイン横断のキーワード検索で確実にヒットさせるため。
 - **シングルクォート `'` を含む場合は `''` でエスケープ** — SQLite の文字列リテラル仕様。
 
@@ -134,7 +147,7 @@ sqlite3 data/user_journey.db "DELETE FROM user_journey WHERE id = <N>"
 sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = <N>"
 ```
 
-### 乖離検知時の取り扱い (id 32 ルール)
+### 乖離検知時の取り扱い
 
 ユーザーの新指示が既存レコードと矛盾するとき:
 
@@ -179,7 +192,7 @@ sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = 
 
 1. 関連キーワード 2〜3 個で検索 (機能名 + ドメイン用語 + 制約タイプ を組み合わせる):
    ```sh
-   sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%Spotify%'"
+   sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%エクスポート%'"
    sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%write%' OR text LIKE '%API%'"
    ```
 2. ヒットしたら「検索結果の返し方」に沿って user に報告、要件を尊重して設計・実装に進む
@@ -188,8 +201,11 @@ sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = 
 
 ## 注意
 
+- `sqlite3` CLI が必要 (未インストールなら `brew install sqlite3` 等)
 - `data/user_journey.db` はバイナリ (SQLite)。git diff で内容が見えないので、
   追加・更新時はコミットメッセージに具体的な text を書くこと
-- `data/` は `.assetsignore` で Cloudflare 配信から除外済み (公開されない)
+- 公開ホスティングするプロジェクトでは `data/user_journey.db` を配信対象から除外する
+  (例: Cloudflare Pages の `.assetsignore`、静的サイトジェネレータの ignore 設定など)
 - DB ファイル破損時は git 履歴から復元
-- write 操作のルール (id 13) は本スキル自身にも適用される
+- write 操作 (追加・更新・削除) は必ずユーザーの許可を得る、という本スキルの原則は
+  スキル自身の運用にも適用される
