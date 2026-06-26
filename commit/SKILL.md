@@ -1,7 +1,6 @@
 ---
 name: commit
 description: Analyze conversation history to extract "Why" for commit message, fallback to "How" if no Why found. Use when user says "commit", "コミット", or "コミットして"
-model: haiku
 ---
 
 # commit - 会話履歴ベースのコミット
