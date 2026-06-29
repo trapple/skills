@@ -121,8 +121,22 @@ done | sort
 
 各 skill について `SKILL.md` の frontmatter `description` 行を 1 行取り出し、Markdown 表の `Triggers` 列と `Description` 列に使う。
 
+frontmatter の `description` は (a) `description: "..."` (quoted, 内部に `\"` でエスケープされた引用符を含むことあり) と (b) `description: ベタ書き` (unquoted) の **両方の形** を取りうる。以下の正規化を必ず通してから抽出する。
+
 ```bash
-DESC=$(awk '/^---$/{c++; next} c==1 && /^description:/' "$REPO_PATH/$SKILL/SKILL.md")
+# (1) 該当 1 行を取り出す
+DESC_RAW=$(awk '/^---$/{c++; next} c==1 && /^description:/' "$REPO_PATH/$SKILL/SKILL.md")
+
+# (2) value 部分のみ取り出し (quoted / unquoted 両対応)
+#     - `description: ` prefix を削除
+#     - 全体が `"..."` で囲まれている場合のみ両端の `"` を 1 対削除する
+#       (`"?` 単独で end-anchor すると、unquoted で末尾が `"X"` で終わる
+#       description の閉じ引用符まで誤削除されて Triggers を 1 件落とす)
+DESC_VALUE=$(echo "$DESC_RAW" | sed -E 's/^description: *//; s/^"(.*)"$/\1/')
+
+# (3) YAML エスケープを unescape (\" → ")
+#     これをやらないと内部の \"foo\" を grep が 1 トークン扱いし "foo\" のようにブレる
+DESC=$(echo "$DESC_VALUE" | sed 's/\\"/"/g')
 ```
 
 ##### Triggers 列の取り出し方
@@ -135,23 +149,29 @@ description には説明文中で `"Why"` `"How"` のような **trigger では�
 # 優先: Use when user says ... の中の引用符だけ拾う
 TRIGGERS=$(echo "$DESC" | grep -oE 'Use when user says[^.]*' | head -1 \
              | grep -oE '"[^"]+"' | head -4)
-# fallback: 取れなければ description 内の全引用符
-[ -z "$TRIGGERS" ] && TRIGGERS=$(echo "$DESC" | grep -oE '"[^"]+"' | head -4)
+# fallback: 取れなければ description 内の全引用符。
+#           ただし長さ 42 字超過は除外 (description 全体が 1 つの長い引用符として取られる事故対策)
+if [ -z "$TRIGGERS" ]; then
+  TRIGGERS=$(echo "$DESC" | grep -oE '"[^"]+"' | awk 'length($0) <= 42' | head -4)
+fi
 TRIGGERS=$(echo "$TRIGGERS" | awk 'NR==1{printf "%s",$0; next} {printf " / %s",$0}')
+# 0 件 (= Use when user says 句なし + 短い引用符もなし、または「」全角ブラケットのみ) なら placeholder
+[ -z "$TRIGGERS" ] && TRIGGERS="(proactive)"
 ```
 
-5 件以上ある場合は ` / ...` を末尾に付けて省略。
+5 件以上ある場合は ` / ...` を末尾に付けて省略。0 件 placeholder を `(proactive)` にしたのは「description が proactive trigger 中心 / 全角ブラケット使用」のケースで空欄にしないため (空欄だとユーザーが起動方法を読み取れない)。「」全角ブラケットの中身を真の trigger として拾うのは別 fix の余地として残す。
 
 ##### Description 列の取り出し方
 
-`description:` 行の値部分 (引用符内) を取り出し、`Use when user says ...` 以降を除いた前段を 1 文として使う。全角 30〜40 字目安。長すぎる場合も切り詰めず、表が広くなるのは許容する。
+`DESC` (= unescape 済み value) から `Use when user says ...` / `Use proactively when ...` 以降を除いた前段を 1 文として使う。全角 30〜40 字目安。長すぎる場合も切り詰めず、表が広くなるのは許容する。
 
 ```bash
 DESC_TEXT=$(echo "$DESC" \
-  | sed -E 's/^description: *"//; s/" *$//' \
   | sed -E 's/[. 。]?Use when user says.*$//' \
   | sed -E 's/[. 。]?Use proactively when.*$//')
 ```
+
+(`DESC` は既に value のみ + unescape 済みなので、`description: ` prefix や `\"` 残留はない。)
 
 取れない / 空ならそのまま空欄 (placeholder の `?` などは入れない)。
 
@@ -200,8 +220,8 @@ is_manual() {
 
 status_for() {
   local g l
-  is_global "$1" && g=1 || g=0
-  is_local  "$1" && l=1 || l=0
+  if is_global "$1"; then g=1; else g=0; fi
+  if is_local  "$1"; then l=1; else l=0; fi
   if [ "$g$l" = "11" ]; then echo "both"
   elif [ "$g" = "1" ]; then echo "global"
   elif [ "$l" = "1" ]; then echo "local"
@@ -212,6 +232,8 @@ status_for() {
 ```
 
 POSIX 文字クラス `[[:space:]]` を使う (Perl 拡張の `\s` は BSD grep で動かない可能性があるため避ける)。
+
+bool 変数代入は `cmd && a=1 || a=0` ではなく **`if cmd; then a=1; else a=0; fi`** を使う (前者は `a=1` の代入返り値が常に成功なので問題ないように見えるが、特定環境 / subshell 組み合わせで関数 stdout がブレるケースが観測された。明示的な if 文に統一する)。
 
 #### 4-2. 別 repo 由来同名 skill 検出 (警告ブロック用)
 
@@ -296,7 +318,12 @@ install したいスキル名をスペース区切りで返してください。
 
 ```bash
 SELECTED_RAW=$(echo "$INPUT" | tr ',\n' ' ' | xargs -n1)
-mapfile -t SELECTED <<< "$SELECTED_RAW"   # 配列に格納 (空要素は除外)
+# 配列化 (shell-agnostic: bash 4+ にも zsh にもある while-read 版を使う)
+# `mapfile -t` は bash 専用で macOS デフォルトの zsh では動かない。
+SELECTED=()
+while IFS= read -r line; do
+  [ -n "$line" ] && SELECTED+=("$line")
+done <<< "$SELECTED_RAW"
 # 後段の loop は "${SELECTED[@]}" で展開する。
 # 裸の $SELECTED は IFS 汚染の影響で word splitting が壊れる環境があるため避ける。
 ```
