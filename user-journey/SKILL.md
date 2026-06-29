@@ -13,7 +13,8 @@ SQLite (`data/user_journey.db`) に短文で蓄積したナレッジベース。
 
 - 同じ要件を複数の場面で何度も確認するのを避ける
 - 設計書 (`docs/`) や `DESIGN.md` に書くほどではない短い前提を集約する
-- キーワード検索で「過去にユーザーが何を言っていたか」を瞬時に引ける
+- キーワード検索で「ユーザーが今どう振る舞う / 何を望んでいるか」の現行像を瞬時に引ける
+- **現行像 1 本に保つことが目的なので、原則として古いレコードは残さず UPDATE / DELETE で上書きする** (履歴は git 履歴で十分。明示指示があった時だけ INSERT で履歴保持)
 
 ## いつ使うか (必須)
 
@@ -148,13 +149,17 @@ text の規約 (それぞれ理由付き):
 
 ### 更新・削除 (write - 必ずユーザーの許可を得てから)
 
-原則として古いレコードを残し、新レコードを追加することで履歴を保つ
-(id が連番なので時系列が分かる)。明示的に「古い要件を削除して」「N 番を直して」と
-言われた時のみ DELETE / UPDATE する。
+user_journey は「現行のユーザー体験・要件像」を 1 本で表すナレッジベースなので、
+**原則として既存レコードを UPDATE / DELETE で上書きする**。陳腐化した過去版を残すと
+検索のたびに「どれが現行か」を判定するノイズになり、現行像を引きにくくなる。
+履歴は git 履歴 (commit log) で十分追える。
+
+明示的に「履歴を残して」「過去版も追えるようにして」と言われた場合のみ INSERT で
+新レコードを追加する (この場合 id 連番が時系列の代理)。
 
 ```sh
-sqlite3 data/user_journey.db "DELETE FROM user_journey WHERE id = <N>"
 sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = <N>"
+sqlite3 data/user_journey.db "DELETE FROM user_journey WHERE id = <N>"
 ```
 
 ### 乖離検知時の取り扱い
@@ -169,15 +174,15 @@ sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = 
      "header": "user_journey 乖離検知",
      "question": "id <N> (<既存ルール要約>) と新ご要望 (<新要約>) が矛盾します。どう取り扱いますか？",
      "options": [
-       { "label": "新ルールを INSERT (既存は残す)",   "description": "既定。履歴保持の原則どおり古いレコードを残し、新 id を発行。最新が現行ルール。" },
-       { "label": "既存 id を UPDATE で上書き",       "description": "履歴を消して現行 1 本に集約。過去の判断根拠を遡らない場合に。" },
+       { "label": "既存 id を UPDATE で上書き",       "description": "既定。user_journey は現行像 1 本で保つ原則どおり、既存レコードを新要約で上書き。履歴は git ログで追える。" },
+       { "label": "新ルールを INSERT (既存は残す)",   "description": "履歴保持。古いレコードを残して新 id を発行。最新が現行ルール。過去の判断根拠を DB 内で遡りたい場合に。" },
        { "label": "追加しない / 一旦保留",             "description": "今回は user_journey に反映せず別途検討。" },
        { "label": "文面を直したい",                   "description": "新要約案を編集してから判断（差し戻し）。" }
      ]
    }
    ```
-3. **既定は履歴保持 INSERT**（SKILL.md の「更新・削除」原則と整合）。
-   ユーザーが UPDATE を明示選択した場合のみ UPDATE する。
+3. **既定は UPDATE 上書き**（SKILL.md の「更新・削除」原則と整合）。
+   ユーザーが INSERT を明示選択した場合のみ履歴保持 INSERT する。
 4. 関連するコード・docs にも波及する可能性があれば、その旨を併記する
    （DB 更新と実装変更はセットで対応が必要なケースが多い）。
 
@@ -206,8 +211,8 @@ sqlite3 data/user_journey.db "UPDATE user_journey SET text = '<new>' WHERE id = 
    sqlite3 data/user_journey.db "SELECT id, text FROM user_journey WHERE text LIKE '%write%' OR text LIKE '%API%'"
    ```
 2. ヒットしたら「検索結果の返し方」に沿って user に報告、要件を尊重して設計・実装に進む
-3. 矛盾が生じたら、ユーザーに「どちらを優先するか」を確認
-4. 新ルールが確定したら write 操作の許可フロー (上記) で INSERT
+3. 矛盾が生じたら、「乖離検知時の取り扱い」フローで既存 id を UPDATE で上書き (既定) するか確認
+4. 新ルールが確定したら write 操作の許可フロー (上記) で UPDATE (既存 id があれば) / INSERT (新規ドメインなら)
 
 ## 注意
 
