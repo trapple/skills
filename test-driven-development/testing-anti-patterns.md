@@ -16,6 +16,7 @@ TDD を厳守すればこれらの anti-pattern は構造的に発生しない�
 1. mock の振る舞いを test しない
 2. production class に「test 専用 method」を生やさない
 3. 依存を理解せずに mock しない
+4. spec 違反を検出できないテストを書かない (冗長テスト禁止)
 ```
 
 ## Anti-Pattern 1: mock の振る舞いをテストしている
@@ -246,6 +247,55 @@ TDD cycle:
 4. 「完了」を主張する
 ```
 
+## Anti-Pattern 6: 過剰テスト / 冗長テスト
+
+**違反:**
+
+```javascript
+// ❌ BAD: 同一 equivalence class の水増し — 全部同じ guard を通る
+test('rejects empty email', ...);
+test('rejects email of only spaces', ...);  // trim 後空 → 同じ分岐
+test('rejects null email', ...);            // 同じ guard
+test('rejects undefined email', ...);       // 同じ guard
+
+// ❌ BAD: 実装詳細を assert — 振る舞い不変の refactor で壊れる
+test('calls validateEmail exactly once', () => {
+  const spy = mock.method(validator, 'validateEmail');
+  submitForm({ email: 'a@b.c' });
+  assert.equal(spy.mock.callCount(), 1);
+});
+```
+
+**なぜ wrong か:**
+- 冗長テストは regression 検出力を上げず、保守コストとノイズだけ増やす
+- 実装詳細テストは正しい refactor で fail し、「テストを通すために設計を歪める」逆転が起きる
+- テストの本数が「よくテストされている」という誤った安心感を生む
+- KISS 違反 — テストも保守対象のコード
+
+**fix:**
+
+```javascript
+// ✅ GOOD: 分岐ごとに代表 1 点 (+ spec に意味のある境界値)
+test('rejects blank email', async () => {
+  const result = await submitForm({ email: '  ' });
+  assert.equal(result.error, 'Email required');
+});
+```
+
+### ゲート
+
+```
+テストを 1 本足す前に:
+  問う: 「このテストが fail する production の変更は、spec 違反か?」
+    No (振る舞い不変の refactor で壊れる) → 書かない
+
+  問う: 「既存テストと同じ分岐 / 同じ equivalence class を通るか?」
+    Yes → 書かない (spec に意味のある境界値のみ例外)
+
+  注意: spec にある振る舞い・境界・エラー経路を「過剰」と呼んで
+  省くのは逆方向の違反。必要十分 = spec の全振る舞いを 1 回ずつ
+```
+
 ## mock が複雑になりすぎたとき
 
 **warning sign:**
@@ -277,6 +327,7 @@ TDD cycle:
 | 不完全な mock | real API を完全ミラー |
 | test を後付け | TDD — test 先行 |
 | 過剰 mock | integration test を検討 |
+| 過剰 / 冗長テスト | equivalence class 代表 + 境界に絞る |
 
 ## Red Flag
 
@@ -286,6 +337,9 @@ TDD cycle:
 - mock を外すと test が fail する
 - mock を入れている理由が説明できない
 - 「念のため」mock している
+- 振る舞い不変の refactor でテストが壊れる
+- 複数のテストが同じ分岐を通っている
+- テスト内に if / try-catch での成否分岐がある
 
 ## Bottom Line
 

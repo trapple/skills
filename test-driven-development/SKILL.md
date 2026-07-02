@@ -9,6 +9,8 @@ description: "Use when implementing any feature or bugfix, before writing implem
 
 **Core principle:** **失敗を見てないテストは、正しいものをテストしているか分からない**。
 
+**第二原則:** **テストは必要十分に**。spec の各振る舞いをちょうど 1 回ずつ — 多いほど良い、ではない (下記「必要十分 — 過剰テストの禁止」)。
+
 **着手の合図:** `test-driven-development スキルで進めます。` と 1 行宣言してから始める。
 
 **規則の字面を破ることは、規則の精神を破ることと同じ。**
@@ -222,6 +224,47 @@ GREEN 後だけ:
 | **最小** | 1 つの振る舞い。"and" が入ったら分割 | `test('validates email and domain and whitespace')` |
 | **明確** | 名前が振る舞いを説明する | `test('test1')`, `test('works')` |
 | **意図** | 望ましい API を示す | コードがどう動くか曖昧 |
+| **必要十分** | spec の 1 振る舞い = 1 テスト | 同一分岐を入力違いで水増し |
+| **KISS** | setup 数行 + 実行 + assert でベタ書き | テスト内に分岐 / ループ / 過剰な helper |
+
+## 必要十分 — 過剰テストの禁止
+
+「テスト先行」は「テストを多く書け」ではない。テストも保守対象のコード。冗長なテストは regression 検出力を上げず、refactor のコストとノイズだけを増やす。
+
+**テストを 1 本足す前のゲート:**
+
+```
+このテストが fail するような production の変更は、spec 違反か?
+  Yes → 書く
+  No (振る舞い不変の refactor で壊れる / 既存テストと同じ変更でしか壊れない) → 書かない
+```
+
+**書かないもの:**
+
+| 対象 | 理由 |
+|------|------|
+| 言語 / framework / library 自体の動作 | 自分のコードではない (`JSON.parse` が動く証明は不要) |
+| 同一 equivalence class の重複入力 | 代表 1 点 (+ spec に意味のある境界値) で証明として十分 |
+| 実装詳細 (内部 helper の呼び出し回数 / 順序) | refactor で壊れる。public な振る舞い経由で assert する |
+| spec に無い hypothetical 入力への防御 | YAGNI。spec が増えたときに RED から書く |
+| private 関数の直接テスト | public API 経由で cover されるならそれで十分 |
+
+**テストコード自体も KISS:**
+
+- setup 数行 + 実行 1 行 + assert 数行、で読み切れる形が正。ベタ書きでよい
+- テスト内に if / try-catch での成否分岐を書かない。分岐したくなったら別テストに分割
+- table-driven / パラメタ化は境界値の列挙にだけ使う。同一 class の水増しに使わない
+- setup が肥大したら helper 追加より先に設計を疑う (「スタックしたとき」参照)
+
+**増やす方向の合理化:**
+
+| 言い訳 | 現実 |
+|--------|------|
+| 「テストは多いほど安全」 | 冗長テストは検出力を上げない。refactor 阻害とノイズが増えるだけ |
+| 「念のため全パターン」 | equivalence class の代表 + 境界で証明は完結する |
+| 「カバレッジ 100% が目標」 | カバレッジは結果であって目標ではない。目標は spec の振る舞い網羅 |
+
+**逆方向の合理化に注意:** spec にある振る舞い・境界・エラー経路を「過剰」と呼んで省くのは Iron Law 違反。必要十分 = **spec の全振る舞いを、それぞれちょうど 1 回ずつ**。
 
 ## よくある合理化と現実
 
@@ -308,7 +351,8 @@ work 完了マーク前に:
 - [ ] 全 test pass
 - [ ] 出力が pristine (warning / error 無し)
 - [ ] mock は避けられない箇所だけ
-- [ ] edge case / エラーも cover した
+- [ ] spec 上ありうる edge case / エラー経路を cover した (spec 外の hypothetical は書かない)
+- [ ] 冗長テストが無い — 同一 equivalence class の重複 / 実装詳細 / library 自体のテストをしていない (「必要十分」参照)
 
 **全部 ✓ じゃない = TDD を飛ばした。やり直す。**
 
@@ -352,7 +396,7 @@ mock は外部依存 (network, fs, time) を切るためだけに使う。produc
 
 「とりあえず mock しておけば pass する」で書くと、production で何が起きるか保証されない。mock するなら **production 実装と同じ contract** を mock 側でも満たす (or 差し替え可能な小さい interface に切り出す)。
 
-不完全な mock / 後付け test / 過剰 mock など他の anti-pattern と詳細な gate function は [testing-anti-patterns.md](testing-anti-patterns.md) 参照。
+不完全な mock / 後付け test / 過剰 mock / 過剰テストなど他の anti-pattern と詳細な gate function は [testing-anti-patterns.md](testing-anti-patterns.md) 参照。
 
 ## PJ 規約との接続
 
