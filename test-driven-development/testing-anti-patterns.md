@@ -252,11 +252,12 @@ TDD cycle:
 **違反:**
 
 ```javascript
-// ❌ BAD: 同一 equivalence class の水増し — 全部同じ guard を通る
-test('rejects empty email', ...);
-test('rejects email of only spaces', ...);  // trim 後空 → 同じ分岐
-test('rejects null email', ...);            // 同じ guard
-test('rejects undefined email', ...);       // 同じ guard
+// ❌ BAD: 同一 equivalence class の水増し — 同じ production code で扱われる入力を並べても検出力は増えない
+test('rejects spaces-only email', ...);
+test('rejects tab-only email', ...);      // trim に対して spaces と同一 class
+test('rejects newline-only email', ...);  // 同上
+test('rejects null email', ...);
+test('rejects undefined email', ...);     // nullish は 1 class → どちらか 1 本
 
 // ❌ BAD: 実装詳細を assert — 振る舞い不変の refactor で壊れる
 test('calls validateEmail exactly once', () => {
@@ -275,22 +276,23 @@ test('calls validateEmail exactly once', () => {
 **fix:**
 
 ```javascript
-// ✅ GOOD: 分岐ごとに代表 1 点 (+ spec に意味のある境界値)
-test('rejects blank email', async () => {
-  const result = await submitForm({ email: '  ' });
-  assert.equal(result.error, 'Email required');
-});
+// ✅ GOOD: 要求される production code ごとに代表 1 点
+test('rejects empty email', ...);           // === '' を強制 (境界)
+test('rejects whitespace-only email', ...); // trim() を強制 (' \t\n ' で全字種を 1 本に)
+test('rejects missing email', ...);         // ?. を強制 (nullish の代表)
 ```
 
 ### ゲート
 
 ```
-テストを 1 本足す前に:
-  問う: 「このテストが fail する production の変更は、spec 違反か?」
-    No (振る舞い不変の refactor で壊れる) → 書かない
-
-  問う: 「既存テストと同じ分岐 / 同じ equivalence class を通るか?」
-    Yes → 書かない (spec に意味のある境界値のみ例外)
+テストを 1 本足す前に (SKILL.md「必要十分」のゲートと同一規則):
+  問う: 「この入力を正しく扱うために、既存テストが強制していない
+         production code の追加・変更が必要か?」
+    Yes → 別 class。書く
+    No  → 同一 class。書かない
+         (例外は spec が明示する境界ちょうどの値を代表に選ぶことのみ。
+          mutation を捏造して「この点だけ fail する改変がある」と
+          正当化するのは過剰テスト)
 
   注意: spec にある振る舞い・境界・エラー経路を「過剰」と呼んで
   省くのは逆方向の違反。必要十分 = spec の全振る舞いを 1 回ずつ

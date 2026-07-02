@@ -115,13 +115,15 @@ test('retry works', async () => {
 
 PJ 標準のテストコマンドで実行する (例: `npm test` / `pytest` / `cargo test` / `go test ./...` / `make test`)。長時間 / 出力を後から見たい / 常駐 watch の場合は、PJ のコマンド実行ルール (例: `.claude/rules/cmux-command-execution.md` 等の別ペイン規約) に従う。
 
+**hang しうる実行には必ず時間上限を付ける** (無限ループが予想される cycle 等)。目的は「実行全体を外側から有限時間で打ち切る」ことで、実行環境にある任意の機構でよい (GNU `timeout` / 実行ツール側の timeout 設定 / CI の job timeout 等。`timeout` コマンドは素の macOS には無い)。runner 内の per-test timeout は同期無限ループを中断できないことがある。観測が返ってこないと下記判別フロー D に到達できない。
+
 ```bash
 # 例: Node プロジェクト
 node --test tests/retry.test.mjs
 ```
 
 確認:
-- **fail** している (error ではなく)
+- **fail** している (test setup 起因の error ではなく)。**production 起因の例外による fail (欠落 guard の TypeError 等) は assertion fail と同格の valid RED** (判別フロー D-1)
 - **fail メッセージが期待通り** ("retryOperation is not defined" / "expected 'success', got undefined" 等)
 - **機能が無いから fail** している (typo で fail しているのではない)
 
@@ -132,6 +134,8 @@ node --test tests/retry.test.mjs
 ### RED が観測できなかったときの判別フロー
 
 テストを書いて実行したが期待した assertion fail が出ない場合、以下のいずれか。**Red Flags の「テストが即 pass した」はパターン A-1 のみが該当** — パターン A-2 / A-3 / C / D は正当な観測手順。
+
+**分類の第一原理: 失敗の帰属は表出形 (assertion / 例外 / crash) ではなく原因主体で判定する。** test 側 (setup / typo / import) 起因なら C、production 側 (欠落機能 / バグ) 起因なら valid RED (D)。列挙に当てはまらない失敗もこの原理で振り分ける。
 
 **A. 即 pass した** (期待: fail / 実際: pass)
 
@@ -154,11 +158,11 @@ node --test tests/retry.test.mjs
 
 - **特例: import 先 module が未作成** (`ERR_MODULE_NOT_FOUND` 等) → 対象 symbol の **空 stub** (`export function name() {}` / `export const name = undefined;` 等) を作って module 解決を通す。**空 stub は assertion を pass させる能力がないため Iron Law の "production code" には該当しない** (空 stub 作成 ≠ 「テスト前に実装を書いた」)。次の実行で assertion fail まで到達する
 
-**D. assert に到達せず runner が crash / OOM / timeout** (production 側の無限ループ / null deref など)
+**D. production 起因で assert に到達しない / 例外 fail する** (runner の crash / OOM / timeout、または production が throw した例外による test fail。無限ループ / null deref / 欠落 guard の TypeError など)
 
-→ **production 側の欠落機能 / バグが原因なら valid な RED とみなす**。2 sub-case:
+→ **production 側の欠落機能 / バグが原因なら valid な RED とみなす**。runner が生きていて「test fail」と表示されるか、runner ごと crash するかは問わない (原因主体で判定)。2 sub-case:
 
-- **D-1. crash が「今 cycle のテスト対象 behavior の欠落」そのもの** (例: 「size=0 で TypeError」をテストしたら guard 未実装ゆえに無限ループ) → crash 自体を valid RED として記録。次の edit (= guard 実装) がそのまま GREEN。**「最小 guard を一時挿入 → 観測 → 本実装」の二段は不要、1 edit で完結してよい**
+- **D-1. 失敗が「今 cycle のテスト対象 behavior の欠落」そのもの** (例: nullish guard 欠落による TypeError の test fail / 「size=0 で RangeError」をテストしたら guard 未実装ゆえに無限ループ) → その失敗自体を valid RED として記録。次の edit (= guard 実装) がそのまま GREEN。**「最小 guard を一時挿入 → 観測 → 本実装」の二段は不要、1 edit で完結してよい**
 - **D-2. crash が今 cycle のテスト対象 behavior と incidental** (例: 別 path の null deref がたまたま当該 test の setup 段階で発火し、本来見たい assertion まで届かない) → production に最小 guard (loop 上限 / early return / null check) を入れて assertion メッセージまで到達させてから記録する方が望ましい (後続の Verify GREEN との対称性のため)
 
 ### GREEN — 最小実装
@@ -199,7 +203,7 @@ node --test tests/retry.test.mjs
 確認:
 - 該当テストが pass
 - **他のテストも通過したまま**
-- 出力が pristine (warning / error が混じっていない) — **ただし pristine 要件は「最終 Verify GREEN」に対して**。A-3 forced break / D-1 crash 観測など意図的な失敗実行の出力には適用しない
+- 出力が pristine (warning / error が混じっていない) — **ただし pristine 要件は「最終 Verify GREEN」に対して**。A-3 forced break / D-1 の失敗観測など意図的な失敗実行の出力には適用しない
 
 **テストが fail?** コードを直す (テストを緩めるな)。
 **他テストが fail?** いま直す。あとでは無理。
@@ -234,17 +238,22 @@ GREEN 後だけ:
 **テストを 1 本足す前のゲート:**
 
 ```
-このテストが fail するような production の変更は、spec 違反か?
-  Yes → 書く
-  No (振る舞い不変の refactor で壊れる / 既存テストと同じ変更でしか壊れない) → 書かない
+この入力を正しく扱うために、既存テストが強制していない
+production code の追加・変更が必要か?
+  Yes → 別 equivalence class。テストを書く (triangulation)
+  No  → 同一 class。書かない
 ```
+
+- **class は入力の字面ではなく「要求される production code」で切る**。空文字 / 空白のみ / null は見た目が似ていても、`=== ''` / `trim()` / `?.` と要求コードが違えば別 class。逆に `-1` と `-100` は同じ guard で扱われるので同一 class
+- **代表点の選び方**: spec が数値・長さ等の境界を明示するなら、境界ちょうどの値を代表にする (例: `size <= 0` なら `0`)。境界の内側の追加点 (`-1`, `-100`) は書かない
+- **補助質問** (迷ったら): 「このテストが fail する production の変更は、spec 違反か?」 — No (振る舞い不変の refactor で壊れる / 既存テストと同じ変更でしか壊れない) なら書かない。※ Yes でも上のゲートが No なら書かない — mutation を捏造すればどんなテストも正当化できてしまうため、主ゲートは常に「要求 production code」基準
 
 **書かないもの:**
 
 | 対象 | 理由 |
 |------|------|
 | 言語 / framework / library 自体の動作 | 自分のコードではない (`JSON.parse` が動く証明は不要) |
-| 同一 equivalence class の重複入力 | 代表 1 点 (+ spec に意味のある境界値) で証明として十分 |
+| 同一 equivalence class の重複入力 | class ごとに代表 1 点 (+ spec が明示する境界ちょうどの値) で十分 |
 | 実装詳細 (内部 helper の呼び出し回数 / 順序) | refactor で壊れる。public な振る舞い経由で assert する |
 | spec に無い hypothetical 入力への防御 | YAGNI。spec が増えたときに RED から書く |
 | private 関数の直接テスト | public API 経由で cover されるならそれで十分 |
@@ -263,6 +272,12 @@ GREEN 後だけ:
 | 「テストは多いほど安全」 | 冗長テストは検出力を上げない。refactor 阻害とノイズが増えるだけ |
 | 「念のため全パターン」 | equivalence class の代表 + 境界で証明は完結する |
 | 「カバレッジ 100% が目標」 | カバレッジは結果であって目標ではない。目標は spec の振る舞い網羅 |
+
+**ユーザーが「全パターン個別にテストして」と明示要求したとき:**
+
+1. **default**: 代表点に絞って実装し、class 分割の根拠と「要求された全入力がこの N 本で cover される」ことを提示する
+2. **override**: 根拠を見たうえでユーザーがなお個別列挙を求めたら (監査要件等)、それを spec として従う
+3. **応答が得られない場合** (非対話実行): default のまま確定し、絞った判断と根拠を成果物 / 最終報告に 1 行残す
 
 **逆方向の合理化に注意:** spec にある振る舞い・境界・エラー経路を「過剰」と呼んで省くのは Iron Law 違反。必要十分 = **spec の全振る舞いを、それぞれちょうど 1 回ずつ**。
 
