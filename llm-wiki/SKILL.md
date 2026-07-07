@@ -41,6 +41,35 @@ Andrej Karpathy 提唱「LLM が維持する個人ナレッジベース」を Cl
 | `i` / `ingest` | Ingest | ソースパス／識別子。空なら対話で確認 |
 | `q` / `query` | Query | 質問文。空なら対話で確認 |
 | `l` / `lint` | Lint | チェック対象の絞り込み（例: `orphans`）。空なら全項目 |
+| `h` / `help` | Help | なし。下記「Help」節のヘルプをそのまま出力して終了（wiki には触らない） |
+
+## Help（`/llm-wiki help`）
+
+以下をそのままチャットに出力する（ファイルは一切読まない・書かない。即答すること）:
+
+```markdown
+# /llm-wiki 使い方
+
+| コマンド | 動作 | 例 |
+|---|---|---|
+| `/llm-wiki q "<質問>"` | wiki に問い合わせ | `/llm-wiki q "Karpathy って誰？"` |
+| `/llm-wiki i <パス>` | ソースを wiki に取り込む | `/llm-wiki i raw/Clippings/foo.md`<br>`/llm-wiki i ~/repos/github.com/<owner>/<repo>` |
+| `/llm-wiki l [項目]` | 健全性チェック（提案のみ、適用は承認後） | `/llm-wiki l` / `/llm-wiki l orphans` / `/llm-wiki l stale_external` |
+| `/llm-wiki help` | このヘルプ | |
+
+**query の種別（自動判定）**:
+- **fact** —「X を始めたのいつ？」「何回した？」→ raw サマリ層を grep して即答
+- **lookup** —「Y って誰／何？」→ manifest grep → 1-3 ページ Read（迷ったらこれ）
+- **compare** —「A と B の違いは？」→ 比較表
+- **synthesis** —「2025 年に何してた？」→ ジャンル横断統合（良い回答は保存提案 💾 が出る）
+- **source** —「この記事の原文は？」→ raw を直接 Read
+
+**補足**:
+- 保存提案 💾 は保存価値があると判断したときだけ付く（不要なら「不要」と返すだけ）
+- 所要時間を計測したいときは質問に「計測して」と添える
+- 未整理の `raw/Clippings/` は「Clippings を整理して」で ingest + カテゴリ振り分け
+- インデックス手動更新: `python3 ~/ObsidianVault/scripts/update_indexes.py`（ingest 後は自動実行される）
+```
 
 ## Query（デフォルト経路 — さっと答える）
 
