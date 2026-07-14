@@ -73,7 +73,9 @@ codex exec "$PROMPT" < /dev/null
 
 ## Step 4a: crit を使う場合
 
-**必ず「UI 起動 → コメント投稿」の順で行うこと。** file モードの `crit <file>` は git ブランチレビューとは**別の専用セッション**（独自の review file）を作るため、先に headless で投稿したコメントは UI に表示されない。daemon 稼働中の `crit comment` は実行中セッションに自動接続され、UI に live reload で反映される（実測確認済み）。
+**file モードでは必ず「UI 起動 → コメント投稿」の順で行うこと。** file モードの `crit <file>` は git ブランチレビューとは**別の専用セッション**（独自の review file）を作るため、daemon 起動前に headless で投稿したコメントはブランチレビュー側に入り、UI に表示されない（セッションの取り違え）。daemon 稼働中の `crit comment` は実行中セッションに自動接続され、UI に live reload で反映される（実測確認済み）。
+
+**例外（JSON 先行が可能なケース）**: レビュー対象が**ブランチ / working tree の diff に含まれるファイルだけ**なら、headless 投稿 → bare `crit`（git モード）起動の順でも成立する。headless `crit comment` の投稿先（ブランチレビュー）と bare `crit` の接続先セッションが同一のため（実測: 同一 session key に接続）。ただし git モードの UI は **diff に含まれるファイルしか表示しない**ので、diff 外ファイルへの行コメントは見えない。迷ったら UI 先行の file モードを使う。
 
 1. crit UI を起動する。`run_in_background: true` で:
 
@@ -103,6 +105,6 @@ crit comment --json --file <tmpfile> --author '<モデル名>'
 
 ## 注意（footgun）
 
-- **`crit <file>` に `--no-open` を付けない**: crit 0.17.1 では `--no-open` 付きだと daemon が起動直後にクラッシュする（`could not reach daemon: connection reset by peer`、実測確認済み）。ブラウザは自動で開かせる
+- **UI 起動コマンドにオプションを付けない**: crit 0.17.1 では `--no-open` や `-o` を付けると daemon が起動直後にクラッシュする（`could not reach daemon: connection reset by peer`、いずれも実測確認済み）。UI 起動は素の `crit <file...>` だけにする。ブラウザは自動で開かせる（`-o` は headless の `crit comment` では正常に機能する）
 - **`crit comment --help` を実行しない**: ヘルプ表示ではなく body="--help" のレビューコメント投稿として解釈される（実測確認済み）。ヘルプは `crit --help` で見る
 - コメント body をシェル引数で直接渡すときは single-quote を使う（backtick やシェルメタ文字対策）。複数エントリは必ず `--json --file`
