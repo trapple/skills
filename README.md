@@ -58,6 +58,7 @@ dependencies:
 | `compress` | `compress`, `圧縮`, `CCS`, `/compress` | Compress the current conversation into a CCS (Compressed Cognitive State) markdown file — goal_orientation, constraints, uncertainty_signal, episodic_trace, semantic_gist, focal_entities, relational_map, predictive_cue — so a fresh session (after `/clear`) can resume it with `decompress`. Resolves the save location (`.claude/memory/`) via git's common directory rather than the cwd, so it stays consistent across git worktrees. |
 | `decompress` | `decompress`, `復元`, `CCS復元`, `/decompress` | Find and load a CCS file saved by `compress` to restore goal, constraints, open questions, recent work, and the next action into a fresh session. Resolves `.claude/memory/` via git's common directory so it finds files saved from the main worktree even when run from inside a linked worktree. |
 | `launch-unity` | `unity起動`, `Unity起動して`, `Unity開いて`, `launch unity` | Detect which Unity project to launch and start Unity Editor via `uloop launch`. Auto-detects candidates (by `ProjectSettings/ProjectVersion.txt`, depth ≤ 4) at invocation via dynamic context, then resolves the target in priority order: explicit argument > current directory is a Unity project > single candidate > inferred from conversation context (stating the rationale) > AskUserQuestion — never picks silently among ambiguous candidates. **Requires the `uloop` CLI.** |
+| `japanese-tech-writing` | `執筆規範`, `文章規範`, `推敲して`, `リライトして`; proactive (writing / revising Japanese technical prose) | Japanese technical-writing style rules for drafting and revising technical manuscripts (book chapters, articles, explanations): formatting, paragraph/argument construction (paragraph writing), argument rigor, reader-load management, viewpoint and narration, restraint of dramatization, banning LLM-ish filler phrases, and redundancy elimination. Borrowed verbatim from [k16shikano's gist](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d), released under the [Unlicense](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d?permalink_comment_id=6210840#gistcomment-6210840) (full text bundled as `LICENSE` in the skill directory). |
 
 ## Why use APM for skills?
 
@@ -136,6 +137,7 @@ dependencies:
 | `compress` | `compress` / `圧縮` / `CCS` / `/compress` | 現在の会話を CCS (Compressed Cognitive State) 形式の markdown（goal_orientation / constraints / uncertainty_signal / episodic_trace / semantic_gist / focal_entities / relational_map / predictive_cue）に圧縮し、`.claude/memory/ccs_<timestamp>.md` に保存する。`/clear` 後の新セッションで `decompress` から再開できるようにする。保存先はカレントディレクトリではなく git の common-dir 基準で解決するため、git worktree 内で実行してもメイン作業ツリーと同じ場所に保存される。 |
 | `decompress` | `decompress` / `復元` / `CCS復元` / `/decompress` | `compress` が保存した CCS ファイルを検索・読み込み、目標・制約・未解決課題・直近の作業・次のアクションを新セッションに復元する。`.claude/memory/` の解決も git の common-dir 基準で行うため、linked worktree 内から実行してもメイン作業ツリー側に保存された CCS を見つけられる。 |
 | `launch-unity` | `unity起動` / `Unity起動して` / `Unity開いて` / `launch unity` | 起動対象の Unity プロジェクトを特定して `uloop launch` で Unity Editor を起動する。スキル起動時に動的コンテキストで候補を自動検出（`ProjectSettings/ProjectVersion.txt` の存在、深さ4まで）し、引数指定 > カレントが Unity プロジェクト > 候補が1つ > 会話コンテキストから判断（根拠を明示） > AskUserQuestion の優先順で決定する。曖昧なまま勝手に選ばない。**`uloop` CLI 必須。** |
+| `japanese-tech-writing` | `執筆規範` / `文章規範` / `推敲して` / `リライトして`; proactive（日本語技術文書の執筆・推敲時） | 日本語の技術文書（書籍の章・記事・解説文）を書く・推敲するときの文章規範。整形 / 段落と論証の構成（パラグラフライティング）/ 論証の厳密さ / 読み手の負荷の管理 / 視点と語り / 演出の抑制 / LLM っぽい表現の禁止 / 冗長の排除 を定める。規範本文は [k16shikano 氏の gist](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d) から拝借（[Unlicense](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d?permalink_comment_id=6210840#gistcomment-6210840) で公開。スキルディレクトリに Unlicense 全文を `LICENSE` として同梱）。 |
 
 ### なぜ APM 経由なのか
 
@@ -151,3 +153,5 @@ dependencies:
 ### ライセンス
 
 [MIT](LICENSE)
+
+例外: `japanese-tech-writing` の規範本文は [k16shikano 氏の gist](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d)（[Unlicense](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d?permalink_comment_id=6210840#gistcomment-6210840)）由来。詳細は [`japanese-tech-writing/LICENSE`](japanese-tech-writing/LICENSE) を参照。
