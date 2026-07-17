@@ -1,6 +1,6 @@
 ---
 name: llm-wiki
-description: Karpathyの「LLM Wiki」パターン（永続的・追記型のmarkdown wikiをLLMが維持する個人ナレッジベース手法）をObsidianVault上で運用するスキル。Wiki本体は `~/ObsidianVault/llm-wiki/`、ソースは `~/ObsidianVault/raw/` 配下（`raw/Clippings/` はWeb Clipper受け皿、整理済みは `raw/<Category>/`）と外部の `~/repos/<owner>/<repo>/docs/`。3操作: Ingest / Query / Lint。ユーザーが「LLM Wiki」「Karpathy wiki」「永続的なナレッジベース」「wiki に取り込んで／ingest」「wiki から〜について調べて／query」「wiki を lint／掃除／健全性チェック」「Clippings を整理して」「memex」のような発話をしたとき、または `~/ObsidianVault/llm-wiki/`・`~/ObsidianVault/raw/`・`~/repos/<owner>/<repo>/docs/` 配下で作業しているときは、明示されていなくても必ずこのスキルを使う。
+description: "Karpathyの「LLM Wiki」パターン（永続的・追記型のmarkdown wikiをLLMが維持する個人ナレッジベース手法）をObsidianVault上で運用するスキル。Wiki本体は `~/ObsidianVault/llm-wiki/`、ソースは `~/ObsidianVault/raw/` 配下（`raw/Clippings/` はWeb Clipper受け皿、整理済みは `raw/<Category>/`）と外部の `~/repos/<owner>/<repo>/docs/`。3操作: Ingest / Query / Lint。ユーザーが「LLM Wiki」「Karpathy wiki」「永続的なナレッジベース」「wiki に取り込んで／ingest」「wiki から〜について調べて／query」「wiki を lint／掃除／健全性チェック」「Clippings を整理して」「memex」のような発話をしたとき、または `~/ObsidianVault/llm-wiki/`・`~/ObsidianVault/raw/`・`~/repos/<owner>/<repo>/docs/` 配下で作業しているときは、明示されていなくても必ずこのスキルを使う。"
 ---
 
 # LLM Wiki
