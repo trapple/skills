@@ -7,6 +7,8 @@ description: Fork the current Claude Code session into a Herdr session-modal pop
 
 現在の Claude Code セッションを、herdr の**セッションモーダルなポップアップ** (80%×80%) にフォークする。herdr-fork のポップアップ版で、タイルレイアウトを一切変更しない。フォーク先は履歴を全部引き継いだ新しいセッションIDで起動し、元セッションは変更されない。
 
+セッションID解決ロジックは [miyagawa 氏の herdr-fork.sh](https://gist.github.com/miyagawa/cb1a9f6c8695d1219efba0c66d5f78f7) 由来。
+
 ## 実行方法
 
 ```

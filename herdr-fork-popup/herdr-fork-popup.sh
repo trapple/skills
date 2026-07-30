@@ -6,9 +6,12 @@
 # (80% x 80%). The fork inherits the full conversation history under a NEW
 # session ID; the original session is left unchanged.
 #
-# Requirements: inside Herdr (HERDR_ENV=1), plugin trapple.herdr-fork-popup
-# linked (herdr plugin link <skill>/plugin). Session ID resolution is the same
+# Requirements: plugin trapple.herdr-fork-popup linked
+# (herdr plugin link <skill>/plugin). Session ID resolution is the same
 # as herdr-fork: CLAUDE_CODE_SESSION_ID, else the focused Herdr Claude agent.
+#
+# Session-ID resolution derived from herdr-fork.sh by Tatsuhiko Miyagawa (@miyagawa):
+#   https://gist.github.com/miyagawa/cb1a9f6c8695d1219efba0c66d5f78f7
 set -euo pipefail
 
 # herdr キーバインド (type="shell") は最小 PATH で走るため、herdr / claude / python3 を解決できるよう補強

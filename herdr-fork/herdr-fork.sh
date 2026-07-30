@@ -2,6 +2,11 @@
 #
 # herdr-fork-claude-session [direction]
 #
+# Based on herdr-fork.sh by Tatsuhiko Miyagawa (@miyagawa):
+#   https://gist.github.com/miyagawa/cb1a9f6c8695d1219efba0c66d5f78f7
+# Modifications: PATH bootstrap for Herdr keybinding shells, server-reachability
+# guard instead of HERDR_ENV, and a `tab` direction that opens a focused new tab.
+#
 # Fork the current Claude Code session into a new Herdr pane.
 # The fork inherits this session's full conversation history under a NEW session
 # ID; the original session is left unchanged (see `claude --fork-session`).
