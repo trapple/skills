@@ -1,0 +1,16 @@
+id = "trapple.herdr-fork-popup"
+name = "Herdr Fork Popup"
+version = "1.0.0"
+min_herdr_version = "0.7.4"
+description = "Open a forked Claude Code session in a session-modal popup terminal"
+platforms = ["macos", "linux"]
+
+# popup はタイルレイアウトに参加しないセッションモーダルの単一リソース。
+# サイズ・配置はここで宣言し、open リクエスト側はエントリーポイント指定だけで済ませる
+[[panes]]
+id = "fork"
+title = "Claude fork"
+placement = "popup"
+width = "80%"
+height = "80%"
+command = ["bash", "fork-popup.sh"]
