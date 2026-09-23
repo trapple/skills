@@ -11,13 +11,15 @@ spec / 要件を入力に、ゼロ context のエンジニアでも実行可能�
 
 **着手の合図:** `writing-plans スキルで実装プランを書きます。` と 1 行宣言してから始める。
 
+**モード:** brainstorming で決めたモード (autonomous / guarded) を引き継ぐ。単独起動なら `cross-review` スキル (`~/.claude/skills/cross-review/SKILL.md`) の「モード判定」で決める。autonomous ではユーザーに質問せず、下記の cross-review ゲートを通して実装に引き継ぐ。
+
 **context:** worktree 上で書くなら `using-git-worktrees` スキルで先に隔離環境を作っておくこと。
 
 **保存先:** `.claude/plans/YYYY-MM-DD-<feature-name>.md` (PJ 側に独自の plan 配置規約 — 例: `docs/plans/` — があればそれに従う)
 
 ## スコープチェック
 
-spec が複数の独立サブシステムを含んでいる場合、brainstorming 段階で分解しておくべきだった。もし分解せずにここまで来てしまったら **plan を 1 つでも書く前にユーザーに decompose を提案** する。各 plan は単独で動くソフトウェアを生むサイズに収める。
+spec が複数の独立サブシステムを含んでいる場合、brainstorming 段階で分解しておくべきだった。もし分解せずにここまで来てしまったら **plan を 1 つでも書く前にユーザーに decompose を提案** する (guarded)。autonomous では分解案を plan 冒頭に書き、最初のサブプロジェクトだけの plan を書いて進む (残りは自律判断ログの未決事項へ)。各 plan は単独で動くソフトウェアを生むサイズに収める。
 
 ## ファイル構造を先に決める
 
@@ -75,7 +77,7 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 
 ### 運用前提 (brainstorming で確定した実装方式)
 
-[隔離方式 (worktree / branch)、ブランチ名、SDD / 直列、その他 brainstorming で固定された前提。実装フェーズへの引き継ぎ情報。]
+[モード (autonomous / guarded)、隔離方式 (worktree / branch)、ブランチ名、SDD / 直列、その他 brainstorming で固定された前提。実装フェーズへの引き継ぎ情報。]
 
 ---
 ```
@@ -89,6 +91,8 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 - Create: `exact/path/to/file.mjs`
 - Modify: `exact/path/to/existing.mjs:123-145`
 - Test: `tests/exact/path/to/file.test.mjs`
+
+**Gate:** *(リスク昇格リストに該当するタスクのみ `human` と書く。該当しなければ行ごと省略)*
 
 **Interfaces:**
 - Consumes: [このタスクが前タスクから使うもの — 正確な signature]
@@ -132,6 +136,14 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+### `Gate: human` の付け方
+
+cross-review スキルの「リスク昇格リスト」(本番データ / DB migration / データ削除 / 認証・認可 / 課金 / 個人情報 / 秘密情報 / デプロイ / 外部送信 / 公開 API の破壊的変更 / PJ 宣言で guarded 指定された領域) に触れるタスクには `**Gate: human**` を付ける。
+
+- autonomous でも、SDD / 直列実行はこのタスクの **直前で止まり**、タスク内容とリスクを示してユーザー承認を待つ。他のタスクは止まらない
+- リスク部分だけを切り出せるならタスクを分け、Gate を付ける範囲を最小にする (例: migration ファイル作成と適用を分け、適用だけに Gate)
+- 案件全体がリスク領域なら、個別の Gate ではなくモードごと guarded にする
+
 ## placeholder 禁止
 
 各 step は実装者が必要とする実体を持つ。以下は **plan 失敗** — 絶対に書かない。
@@ -159,7 +171,17 @@ plan を書き終わったら、新鮮な目で spec と plan を突き合わせ
 3. **型一貫性:** 後タスクで使った型 / signature / プロパティ名が前タスクで定義したものと一致しているか? Task 3 で `clearLayers()` だったのに Task 7 で `clearFullLayers()` になっていたら bug
 4. **PJ 規約整合:** PJ CLAUDE.md / `.claude/rules/` 配下に定義された原則 (例: Fail Fast、命名規約、コミット規約、外部 API の利用方針など) を侵害していないか
 
+5. **Gate 付与漏れ:** リスク昇格リストに触れるタスクに `**Gate: human**` が付いているか
+
 問題を見つけたら直接 inline で fix する。再レビューは不要、直して進む。spec 要件にタスクが対応していなければタスクを足す。
+
+## cross-review ゲート (plan)
+
+セルフレビュー後に `plan-reviewer.md` の prompt で、セッションとは異なる Claude モデルに「ゼロ context の実装者」視点でレビューさせる。手順・ループ・停止条件は cross-review スキルに従う。
+
+- **autonomous: 必須**。Approved になるまで実装に引き継がない (最大 3 往復)
+- **guarded:** plan が 5 タスク以上、または複数サブシステムにまたがるときに実施。それ以外は任意
+- 結果は spec の `## 自律判断ログ` に 1 行追記する
 
 ## 実装への引き継ぎ
 
@@ -174,7 +196,7 @@ plan を書き終わったら、新鮮な目で spec と plan を突き合わせ
 
 ### brainstorming を経由せず writing-plans 単独起動した場合
 
-spec / 要件はあるが brainstorming スキップで来た場合、ここで `AskUserQuestion` で 4 択を提示:
+spec / 要件はあるが brainstorming スキップで来た場合、guarded ならここで `AskUserQuestion` で 4 択を提示する。autonomous なら聞かず、brainstorming の「autonomous での機械的決定」(独立タスク 3 つ以上 → SDD / 作業ツリーが汚れている・並行作業あり → worktree) で決めて進む:
 
 > plan を `.claude/plans/<filename>.md` に書きました。実装方式を選んでください (隔離 × 並列の 2 軸):
 >
@@ -195,6 +217,11 @@ spec / 要件はあるが brainstorming スキップで来た場合、ここで 
   2. plan ファイルはそのまま使う
   3. B はこのセッションで Task 1 から私が消化、D は `subagent-driven-development` を起動
 
+### 直列 (B / C) で消化するときの注意
+
+- タスク間でユーザーに「続けていい?」と聞かない。`**Gate: human**` のタスクの直前だけ止まる
+- 全タスク完了後、SDD と同じく whole-branch の cross-review (保守担当 + 攻撃者視点、別 Claude モデル) を 1 回通し、指摘を直してから終える
+
 ### 4 択の選び方早見表
 
 | | 直列 | SDD |
@@ -206,6 +233,4 @@ spec / 要件はあるが brainstorming スキップで来た場合、ここで 
 
 **main 直コミット禁止** — 必ず branch または worktree に切り替えてから実装に入る。
 
-## subagent レビュー (任意)
-
-長大な plan の品質チェックには `plan-reviewer.md` の prompt テンプレートで subagent を派遣できる。
+**実装の終点:** どのモードでも branch 上の commit まで。push / PR 作成 / merge はユーザーの指示を待つ。

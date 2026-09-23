@@ -143,7 +143,7 @@ worktree が clean state で始まることを確認する。**PJ の標準テ�
 
 PJ CLAUDE.md / README に「主要テストコマンド」が明示されていればそれを優先する。
 
-**pass しないとき:** どのテストが落ちているか報告し、続行可否を確認する。既存の不安定テストなのか、worktree 作成時点で broken なのかを切り分ける。
+**pass しないとき:** どのテストが落ちているか報告し、続行可否を確認する。既存の不安定テストなのか、worktree 作成時点で broken なのかを切り分ける。 autonomous モード (`cross-review` スキル参照) では確認の代わりに、失敗テストが今回の変更範囲と無関係なら失敗一覧を spec の `## 自律判断ログ` に記録して続行し、関係するなら停止して聞く。
 
 **pass したとき:** 完了報告:
 
@@ -167,7 +167,7 @@ Ready to implement <feature-name>.
 | `.claude/worktrees/` 存在 | これを使う (ignored 確認後) |
 | ignored になっていない | .gitignore 追記 → commit してから worktree 作成 |
 | permission error | sandbox fallback、in-place 作業 |
-| baseline テスト fail | 報告して続行可否を聞く |
+| baseline テスト fail | guarded: 報告して続行可否を聞く。autonomous: 失敗テストが今回の変更範囲 (spec / plan が触るファイル) と無関係なら、失敗一覧を spec の自律判断ログに記録して続行。関係するなら停止して聞く |
 
 ## よくあるミス
 

@@ -13,7 +13,9 @@ description: "Use when executing implementation plans with independent tasks in 
 
 **ナレーション:** tool call 間で語るのは最小限。ledger と tool result が記録を持つ。
 
-**連続実行:** タスク間でユーザーに「続けていい?」と聞かない。BLOCKED が解けない / 真の曖昧さ / 全タスク完了 以外では止まらない。進捗 summary もタスクごとに出さない。**実行を頼まれたら実行する**。
+**連続実行:** タスク間でユーザーに「続けていい?」と聞かない。BLOCKED が解けない / 真の曖昧さ / `**Gate: human**` タスクの直前 / 全タスク完了 以外では止まらない。進捗 summary もタスクごとに出さない。**実行を頼まれたら実行する**。
+
+**モード:** plan の「運用前提」に書かれたモード (autonomous / guarded) に従う。書かれていなければ `cross-review` スキル (`~/.claude/skills/cross-review/SKILL.md`) の「モード判定」で決める。autonomous では、下記で「ユーザーに聞く」とある adjudication を **cross-review の「中立な裁定者」視点** (セッションと異なる Claude モデル) に置き換え、裁定結果を ledger に記録して進む。
 
 **着手の合図:** `subagent-driven-development でこの plan を消化します。` と 1 行宣言してから始める。
 
@@ -49,8 +51,9 @@ flowchart TD
     R -->|Yes| L[ledger に Task N 完了記載]
     L --> M{次の task あり?}
     M -->|Yes| T1
-    M -->|No| FR[whole-branch reviewer 派遣]
-    FR --> FIN[commit スキル / PR 作成へ]
+    M -->|Yes, Gate: human| G[ユーザー承認待ち] --> T1
+    M -->|No| FR[whole-branch cross-review<br/>別モデル・保守担当 + 攻撃者視点]
+    FR --> FIN[branch 上の commit で停止<br/>サマリ + 通知]
 ```
 
 ## Pre-flight: plan の事前 review
@@ -59,11 +62,14 @@ Task 1 派遣前に 1 度だけ plan を scan:
 
 - タスク同士が矛盾していないか
 - plan が明示的に要求しているものが review 規約 (assertion なしテスト、ロジック逐語複製 等) で defect 扱いされないか
-- **下流伝播チェック**: Task 1 だけでなく **後続 task が前提にしている既存 file / global pattern / 既存 infra** (例: 「既存 login route」「既存 express middleware パターン」) が repo に **実在するか**。実在しないなら下流 task 着手時にもう一度ユーザー判断が必要になるので、ここで一緒に列挙して 1 質問にまとめる
+- **下流伝播チェック**: Task 1 だけでなく **後続 task が前提にしている既存 file / global pattern / 既存 infra** (例: 「既存 login route」「既存 express middleware パターン」) が repo に **実在するか**。実在しないなら下流 task 着手時にもう一度判断が必要になるので、ここで一緒に列挙して 1 件の adjudication にまとめる
 
-見つけたら **まとめて 1 質問でユーザーに提示** (各 finding と plan の該当箇所を並べて「どちらが govern するか」)。実行開始後に途中で割り込ませない。clean なら無言で進む。
+見つけたら **まとめて 1 件の adjudication にする** (各 finding と plan の該当箇所を並べて「どちらが govern するか」)。実行開始後に途中で割り込ませない。clean なら無言で進む。
 
-**Auto Mode 等の外部 directive との関係:** 「clarifying question を避ける」「reasonable call で進む」のような外部 directive が session に効いていても、**pre-flight finding はその抑制の対象外** — clarifying question ではなく adjudication request として扱い、batched question を発火する。理由: pre-flight は「実行開始前の plan vs 規約の整合」を確認する process gate であり、後で割り込ませない代わりに先で集約する設計上の必須ステップ。Auto Mode を盾に skip すると、SDD の他の不可逆行動 (commit / 派遣) が plan-mandated defect に汚染される。
+- **guarded:** まとめた 1 質問をユーザーに提示する
+- **autonomous:** まとめた finding を cross-review の「中立な裁定者」視点で別 Claude モデルに裁定させる (依頼文逐語 / spec / plan / PJ 規約の path を渡す)。裁定に従って plan を直し、`Pre-flight: <finding 要旨> → <裁定> (<model>)` を ledger に記録して Task 1 に進む。裁定が `Needs Human` で、しかも不可逆な論点のときだけユーザーに聞く
+
+**skip は不可:** Auto Mode や「clarifying question を避ける」directive があっても、pre-flight 自体は省略しない。pre-flight は「実行開始前の plan vs 規約の整合」を確認する process gate で、skip すると SDD の他の不可逆行動 (commit / 派遣) が plan-mandated defect に汚染される。Auto Mode で変わるのは **裁定者が人間か別モデルか** だけ。
 
 **Compaction 後 resume での再 pre-flight:** ledger に「Task N: complete」が並んでいて Task N+1 から再開する場合も、**次 task が前提とする既存物の実在チェック (下流伝播)** を必ず 1 度走らせる。理由: 初回 pre-flight 時点では「Task N が後で作る」前提で finding をクリアしていた可能性があるが、ledger の途中 commit 後に当時の前提が崩れていることが現実にある。`ls` / `grep` で 1 分以内に終わるので skip しない。
 
@@ -78,7 +84,7 @@ Task 1 派遣前に 1 度だけ plan を scan:
 | 設計判断、コードベース全体把握が必要 | 高能力モデル |
 | task reviewer (小さい diff) | 標準モデル |
 | task reviewer (concurrency / 微妙な変更) | 高能力モデル |
-| **whole-branch final reviewer** | **高能力モデル** |
+| **whole-branch final reviewer** | **高能力モデル、かつセッションと異なる Claude モデル** (cross-review 3.1) |
 
 **Agent dispatch では model を明示する**。省略すると session の (高い) 親モデルを継承して silent に高コスト化する。
 
@@ -118,7 +124,7 @@ DIFF_FILE=".claude/sdd/diff-task-$N.txt"
 1. context 不足 → 補って同モデルで再派遣
 2. reasoning 不足 → 上位モデルで再派遣
 3. task が大きすぎる → 分割
-4. plan 自体が間違い → ユーザーに escalate
+4. plan 自体が間違い → guarded はユーザーに escalate。autonomous は controller が plan の修正案を作り、cross-review (中立な裁定者) が Approved なら plan を直して再派遣し、ledger に記録する。不可逆な論点を含むならユーザーに escalate
 
 **絶対やらない:** escalation を無視 / 何も変えずに同モデルで retry。「stuck」と言われたら何かを変える。
 
@@ -137,8 +143,8 @@ task review は task-scoped gate。broad review は最後の whole-branch review
 - diff は file で渡す (上の DONE 節の `DIFF_FILE`)。pasted text は controller の context に居続けて compaction で消えるのを待つコストがかかる
 - dispatch prompt は 1 task の話。過去 task の summary を貼らない (実例で 99% が pasted history だった事故あり)。fresh subagent には「自分の task + 触る interfaces + Global Constraints」だけ
 - Critical / Important は fix subagent で対応。Minor は ledger に記録 → final whole-branch reviewer に triage させる
-- plan-mandated finding (plan が明示的に要求しているが review 規約では defect) はユーザーに「finding と plan 該当箇所」を並べて聞く。plan を盾に dismiss しない、plan と矛盾する fix を勝手に投げない
-- whole-branch review にも diff package を渡す: `BASE=$(git merge-base main HEAD)`, `HEAD=current`、同じ format で 1 file に
+- plan-mandated finding (plan が明示的に要求しているが review 規約では defect) は「finding と plan 該当箇所」を並べて adjudication にかける。guarded はユーザーに聞く、autonomous は cross-review (中立な裁定者) に裁定させて ledger に記録する。plan を盾に dismiss しない、plan と矛盾する fix を裁定なしに投げない
+- whole-branch review にも diff package を渡す: `BASE=$(git merge-base main HEAD)`, `HEAD=current`、同じ format で 1 file に。model は **セッションと異なる Claude モデル** を明示し、reviewer.md の prompt 冒頭に cross-review の「保守担当 + 攻撃者」視点指示を足す
 - fix dispatch にも implementer 契約: covering test を再実行、command + 結果を report file に追記。reviewer は走らせ直さない
 - whole-branch review で複数 finding が返ったら **ONE fix subagent** にまとめて投げる。1 finding 1 fixer は context 再構築コストが finding 数だけ嵩む
 
@@ -189,6 +195,21 @@ mkdir -p .claude/sdd
   ```
 - ledger は recovery map。compaction 後、自分の記憶 < ledger + git log
 - `git clean -fdx` は ledger を消す (ledger は .gitignore 対象、scratch 扱い)。消えたら git log から復元
+
+## `Gate: human` タスク
+
+plan で `**Gate: human**` が付いたタスクは、**モードに関係なく** implementer 派遣の直前で止まる。
+
+1. タスク名・触るファイル・リスク内容 (何が不可逆か) を短く示し、ユーザー承認を待つ
+2. 承認されたら通常通り派遣 → review。却下 / 修正指示なら plan を直してから派遣
+3. ledger に `Task N: gate approved by user` を記録する (compaction 後に再確認しないため)
+
+## 終了時 (全タスク完了後)
+
+1. whole-branch cross-review (上記) を通し、指摘は ONE fix subagent で直して再レビュー
+2. **branch 上の commit で停止する**。push / PR 作成 / merge はしない (ユーザーの指示を待つ)
+3. 成果サマリを出す: branch 名、commit 範囲、テスト結果、ledger と spec の自律判断ログにある **未決事項** と adjudication の一覧
+4. PushNotification が使える環境なら完了を通知する
 
 ## prompt template
 
@@ -257,7 +278,8 @@ Task 2: ...
 - **using-git-worktrees** — 隔離 workspace を先に確保 (`.claude/worktrees/<branch>/`)
 - **writing-plans** — このスキルが消化する plan の作成元
 - **test-driven-development** — subagent が各 task で適用する
-- **commit** — 全 task 終了後の最終 commit / PR 作成は既存 `commit` スキルで
+- **cross-review** — モード判定と、adjudication / whole-branch review を別 Claude モデルで行う手順
+- **commit** — 全 task 終了後、ユーザーに指示されたら PR 作成等を既存 `commit` スキルで
 - **PJ の Fail Fast 系ルール** — PJ CLAUDE.md / `.claude/rules/` に Fail Fast や error-handling の規約 (silent skip 禁止 等) があれば、それを Global Constraints に **常に** 含めること
 
 ## ledger / brief / report の保存先

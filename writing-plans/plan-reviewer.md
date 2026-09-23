@@ -1,67 +1,61 @@
 # Plan Reviewer 用 prompt テンプレート
 
-実装プランを subagent に独立レビューしてもらうときの prompt 雛形。
+実装プランを、セッションとは別の Claude モデルに「ゼロ context の実装者」視点でレビューさせるときの prompt 雛形。`cross-review` スキルの plan ゲートとして使う。
 
-**目的:** plan が完成形で、spec と整合し、適切にタスク分解されているか検証する。
+**目的:** plan が spec と整合し、適切にタスク分解され、この plan だけで実装者が迷わず作れるか検証する。
 
-**派遣タイミング:** plan を書き終え、ユーザーに 2 実行モードを提示する直前 (任意)。
+**派遣タイミング:** plan のセルフレビュー後、実装に引き継ぐ前。autonomous では必須、guarded では 5 タスク以上 / 複数サブシステムにまたがるときに実施。
 
 ## 派遣方法
 
-`Agent` ツール (subagent_type: `general-purpose` または `Plan`) で、以下の prompt を渡す。
+`Agent` ツール (`subagent_type: general-purpose`) で、`model` を **セッションと異なる Claude モデル** に明示する (選び方は cross-review スキル 3.1)。以下の prompt を渡す。
 
 ```
-あなたは plan document reviewer です。この plan が完成して実装に進められるかを検証してください。
+あなたはこの PJ を今日初めて見る実装者です。手元にあるのはこの plan と spec とリポジトリだけで、作成者に質問はできません。plan を頼りに Task 1 から順に作るとして、どこで詰まるか、どこで作成者の意図と別物を作ってしまいそうかを洗い出してください。「たぶんこういう意味だろう」と補完したくなった箇所は、補完せずに指摘してください。
 
 **対象 plan:** [PLAN_FILE_PATH]
 **参照 spec:** [SPEC_FILE_PATH]
+**依頼者の元の依頼文 (逐語):**
+<<<
+[USER_REQUEST_VERBATIM]
+>>>
+**PJ 規約:** [CLAUDE.md / .claude/rules/ の path。無ければ「なし」]
 
 ## チェック項目
 
 | カテゴリ | 何を見るか |
 |---------|------------|
-| 完成度 | TODO / placeholder / 未完タスク / step 欠落 |
-| spec 整合 | plan が spec 要件を全部カバーしているか、scope creep が無いか |
-| タスク分解 | タスクの境界が明確、step が actionable |
-| Buildability | 実装者がこの plan を読んでスタックせずに進められるか |
-| プロジェクト規約 | PJ CLAUDE.md / `.claude/rules/` 配下に定義された恒久ルール (Fail Fast、命名規約、コミット規約、外部 API 利用方針、ドメイン固有の罠など) を侵害していないか |
+| Buildability | plan だけで各 step を実行できるか。前提にしている既存ファイル / 関数 / コマンドは実在するか (実際に ls / grep で確認する) |
+| 完成度 | TODO / placeholder / 未完タスク / step 欠落 / コードの無いコード step |
+| spec 整合 | spec 要件を全部カバーしているか、scope creep が無いか |
+| 型・名前の一貫性 | 前タスクで定義した signature と後タスクでの使い方が一致しているか |
+| タスク分解 | 境界が明確か、step が actionable か |
+| Gate 付与 | 本番データ / DB migration / データ削除 / 認証 / 課金 / 個人情報 / 秘密情報 / デプロイ / 外部送信 / 公開 API の破壊的変更に触れるタスクに `**Gate: human**` が付いているか |
+| プロジェクト規約 | PJ CLAUDE.md / `.claude/rules/` の恒久ルール (Fail Fast、命名規約、コミット規約、外部 API 利用方針など) を侵害していないか |
 
 ## 判定基準
 
-**実装段階で本当に問題になる issue だけ** flag する。
+**実装段階で本当に問題になる issue だけ** flag する。実装者が「違うものを作りそう」「スタックしそう」なら issue。文言の好み・nice to have は Recommendations へ。
 
-- 実装者が「違うものを作りそう」 / 「スタックしそう」 → issue
-- 文言の好み、スタイル、「nice to have」 → issue にしない
-
-spec 要件の漏れ、step の矛盾、placeholder、行動不能なほど曖昧なタスク以外は Approved にする。
+- `Approved` / `Issues Found` / `Needs Human`
+- `Needs Human` は、spec と依頼文が食い違っていて plan 側では決められない場合、またはリスク領域の扱いが spec にも plan にも無い場合に限る
 
 ## 出力フォーマット
 
-## Plan Review
+## Cross Review (ゼロ context の実装者)
 
-**Status:** Approved | Issues Found
+**Status:** Approved | Issues Found | Needs Human
 
-**Issues (if any):**
-- [Task X, Step Y]: [具体的問題] - [なぜ実装段階で問題になるか]
+**Issues:**
+- [Task X, Step Y]: [具体的問題] - [実装段階でなぜ問題になるか] - [修正案]
 
-**Recommendations (advisory, do not block approval):**
+**Needs Human (Status が Needs Human のときのみ):**
+- [論点]: [なぜ plan 側で決められないか] - [可逆 / 不可逆]
+
+**Recommendations (承認をブロックしない):**
 - [改善提案]
 ```
 
-## レビューア返却物
+## 結果の扱い
 
-- Status (Approved / Issues Found)
-- Issues (あれば task / step + 問題 + 影響理由)
-- Recommendations (任意、承認をブロックしない)
-
-## 使うべきとき / 省くべきとき
-
-**使う:**
-- plan が 5 タスク以上の長期計画
-- 複数のサブシステムを跨ぐ依存関係がある
-- TDD 強制が plan のいたるところで必要
-
-**省く:**
-- plan が 1〜3 タスクで自分の目で全部追える
-- 既存パターンの繰り返し
-- 試作 / 検証目的の短期 plan
+`cross-review` スキルの「ループ」節に従う (最大 3 往復、反論 1 回、Needs Human の可逆 / 不可逆による分岐)。
