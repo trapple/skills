@@ -1,52 +1,36 @@
 ---
 name: test-driven-development
-description: "Use when implementing any feature or bugfix, before writing implementation code. Use when user says \"TDD\", \"テスト駆動\", \"test driven\", \"テスト先行\", or whenever non-trivial implementation work begins."
+description: "Use when implementing a feature, bug fix, or behavior change that has testable logic, before writing the implementation. Not for config values, typos, generated code, or throwaway prototypes. Use when user says \"TDD\", \"テスト駆動\", \"test driven\", \"テスト先行\", or when a plan / subagent-driven-development task says to follow TDD."
 ---
 
 # test-driven-development — テスト先行
 
-テスト → 失敗確認 → 最小実装 → 通過確認 → リファクタ、を強制する。
+テスト → 失敗確認 → 最小実装 → 通過確認 → リファクタ、の順で進める。
 
 **Core principle:** **失敗を見てないテストは、正しいものをテストしているか分からない**。
 
 **第二原則:** **テストは必要十分に**。spec の各振る舞いをちょうど 1 回ずつ — 多いほど良い、ではない (下記「必要十分 — 過剰テストの禁止」)。
 
-**着手の合図:** `test-driven-development スキルで進めます。` と 1 行宣言してから始める。
-
-**規則の字面を破ることは、規則の精神を破ることと同じ。**
-
 ## いつ使うか
 
-**常に:**
+**対象:**
 - 新機能
-- bug fix
-- リファクタ
+- bug fix (まず bug を再現する failing test を書く)
 - 振る舞いの変更
+- リファクタ: 既存テストが green のまま進める。新しいテストは振る舞いを足すときだけ書く
 
-**例外 (ユーザーに確認してから):**
-- 使い捨て試作
+**対象外 (確認なしで通常どおり進めてよい):**
+- 設定値・定数の変更、typo、振る舞いを変えないリネームや移動 (既存テストで守られているもの)
 - 生成コード
-- 設定ファイル
+- 使い捨て試作
 
-「今回だけ TDD は飛ばす」と思ったら 止まる。それは合理化。
+## テストを先に書く
 
-## The Iron Law
+失敗するテストを先に書き、その失敗を見てから production code を書く。
 
-```
-失敗するテスト無しで production code を書くな
-```
+先にコードを書いてしまったときは、そのままテストを後付けして終わりにしない。テストを書き、コードを一時的に外すか壊して (下記 A-3 の手法) RED を観測してから戻す。失敗を一度も見ていないテストは、正しいものをテストしているか分からないため。
 
-テストより先に書いたコード → **delete**。やり直す。
-
-**例外なし:**
-- 「参考用に残す」NG
-- 「テスト書きながら adapt する」NG
-- 「見るだけ」NG
-- delete は delete
-
-テストから新鮮に実装する。以上。
-
-**適用対象 (誤解しやすい点):** Iron Law の delete 規則は **この cycle で新規追加する production code** に対するもの。**既存コードの bug fix は対象外** (失敗する再現テスト → 最小 patch で OK、既存コードを delete する必要はない)。詳細は下記「例: bug fix」と「デバッグとの統合」参照。
+既存コードの bug fix では、失敗する再現テスト → 最小 patch でよい (既存コードを外す必要はない)。詳細は下記「例: bug fix」と「デバッグとの統合」参照。
 
 ## Red-Green-Refactor
 
@@ -111,8 +95,6 @@ test('retry works', async () => {
 
 ### Verify RED — 失敗を見る (必須)
 
-**省略禁止。**
-
 PJ 標準のテストコマンドで実行する (例: `npm test` / `pytest` / `cargo test` / `go test ./...` / `make test`)。長時間 / 出力を後から見たい / 常駐 watch の場合は、PJ のコマンド実行ルール (例: `.claude/rules/cmux-command-execution.md` 等の別ペイン規約) に従う。
 
 **hang しうる実行には必ず時間上限を付ける** (無限ループが予想される cycle 等)。目的は「実行全体を外側から有限時間で打ち切る」ことで、実行環境にある任意の機構でよい (GNU `timeout` / 実行ツール側の timeout 設定 / CI の job timeout 等。`timeout` コマンドは素の macOS には無い)。runner 内の per-test timeout は同期無限ループを中断できないことがある。観測が返ってこないと下記判別フロー D に到達できない。
@@ -156,7 +138,7 @@ node --test tests/retry.test.mjs
 
 → error の原因を直して再実行。fail を観測するまでが RED
 
-- **特例: import 先 module が未作成** (`ERR_MODULE_NOT_FOUND` 等) → 対象 symbol の **空 stub** (`export function name() {}` / `export const name = undefined;` 等) を作って module 解決を通す。**空 stub は assertion を pass させる能力がないため Iron Law の "production code" には該当しない** (空 stub 作成 ≠ 「テスト前に実装を書いた」)。次の実行で assertion fail まで到達する
+- **特例: import 先 module が未作成** (`ERR_MODULE_NOT_FOUND` 等) → 対象 symbol の **空 stub** (`export function name() {}` / `export const name = undefined;` 等) を作って module 解決を通す。**空 stub は assertion を pass させる能力がないため、「テストより先に書いた production code」には当たらない**。次の実行で assertion fail まで到達する
 
 **D. production 起因で assert に到達しない / 例外 fail する** (runner の crash / OOM / timeout、または production が throw した例外による test fail。無限ループ / null deref / 欠落 guard の TypeError など)
 
@@ -279,41 +261,13 @@ production code の追加・変更が必要か?
 2. **override**: 根拠を見たうえでユーザーがなお個別列挙を求めたら (監査要件等)、それを spec として従う
 3. **応答が得られない場合** (非対話実行): default のまま確定し、絞った判断と根拠を成果物 / 最終報告に 1 行残す
 
-**逆方向の合理化に注意:** spec にある振る舞い・境界・エラー経路を「過剰」と呼んで省くのは Iron Law 違反。必要十分 = **spec の全振る舞いを、それぞれちょうど 1 回ずつ**。
+**逆方向にも注意:** spec にある振る舞い・境界・エラー経路を「過剰」と呼んで省くのは spec 違反。必要十分 = **spec の全振る舞いを、それぞれちょうど 1 回ずつ**。
 
-## よくある合理化と現実
+## こうなったら立ち止まる
 
-| 言い訳 | 現実 |
-|--------|------|
-| 「単純すぎてテスト不要」 | 単純コードでも壊れる。テスト 30 秒。 |
-| 「あとでテスト書く」 | あとで書いたテストは即 pass = 何も証明しない |
-| 「テスト先後で目的は同じ」 | 後 = 「何をするか」、先 = 「何をすべきか」。違う |
-| 「手で動作確認した」 | ad-hoc は systematic にあらず。記録も再現もできない |
-| 「X 時間捨てるのは無駄」 | 捨ててもサンクコスト。「テスト無しコード保持」が技術的負債 |
-| 「参考に残して、テスト先行で書く」 | adapt する = テスト後追い。delete = delete |
-| 「探索後にテスト書く」 | 探索 OK。捨ててから TDD で書き直す |
-| 「テストが難しい = 設計が複雑」 | テストの声を聞け。テスト困難 = 使用困難 |
-| 「TDD で遅くなる」 | TDD はデバッグより速い。pragmatic = テスト先行 |
-| 「手動の方が速い」 | 手動は edge case を証明しない。毎回再テスト |
-| 「既存コードに test がない」 | 触るなら直す。既存コードにも test を追加 |
-
-**いずれの言い訳も同じ結論: コードを delete して TDD でやり直す。**
-
-## Red Flags
-
-以下が出たら止まってやり直す:
-
-- テストの前にコードを書いた
-- 実装後にテストを書いた
-- テストが即 pass した (※「Verify RED の判別フロー」A-1 のみが該当。A-2 重複先取り / A-3 偶然成立 / D runner crash は valid な観測なので除外)
+- テストが即 pass した (※「RED が観測できなかったときの判別フロー」A-1 のみが該当。A-2 重複先取り / A-3 偶然成立 / D runner crash は valid な観測なので除外)
 - なぜ fail したか説明できない
-- 「あとで」テストを書く
-- 「今回だけ」と合理化
-- 「精神は同じ、形式は違うだけ」
-- 「参考に残す」「adapt する」
-- 「X 時間捨てるのは無駄」
-- 「TDD は dogmatic、自分は pragmatic」
-- 「これは特別な case」
+- 実装後にテストを書いて、失敗を一度も見ていない
 
 ## 例: bug fix
 
@@ -369,7 +323,7 @@ work 完了マーク前に:
 - [ ] spec 上ありうる edge case / エラー経路を cover した (spec 外の hypothetical は書かない)
 - [ ] 冗長テストが無い — 同一 equivalence class の重複 / 実装詳細 / library 自体のテストをしていない (「必要十分」参照)
 
-**全部 ✓ じゃない = TDD を飛ばした。やり直す。**
+✓ にならない項目があれば、その項目を満たしてから完了にする。
 
 ## スタックしたとき
 
@@ -384,7 +338,7 @@ work 完了マーク前に:
 
 bug を見つけたら **まず bug を再現する failing test** を書く。TDD cycle に乗せる。テストが fix の証明と regression 防止の両方になる。
 
-**test なしで bug 修正しない。**
+対象外に挙げた自明な修正を除き、bug 修正は再現テストから始める。
 
 ## テスト anti-pattern (頻出 3 種)
 
@@ -418,12 +372,3 @@ mock は外部依存 (network, fs, time) を切るためだけに使う。produc
 - **Fail Fast 原則** (PJ CLAUDE.md / `.claude/rules/error-handling.md` 等に定義があれば): silent skip / fallback で続行しない設計を testing でも貫く。テストでも catch して empty を返すような assertion は NG
 - **コマンド実行ルール** (PJ CLAUDE.md / `.claude/rules/cmux-command-execution.md` 等に定義があれば): test 実行が長時間 / TUI / watch の場合は別ペイン / 別 surface 規約に従う
 - **副作用は引数注入で mock 可能に**: DB / 外部 API / fs などの副作用は引数で渡し、test 側で stub を差せるようにする。PJ で確立した DI パターンがあればそれに合わせる
-
-## 最終 rule
-
-```
-production code → test が存在し、先に fail していた
-それ以外 → TDD ではない
-```
-
-例外はユーザーの明示的許可があるときだけ。

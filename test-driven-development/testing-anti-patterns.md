@@ -8,9 +8,9 @@
 
 **Core principle:** code が何をするかをテストする、**mock が何をするかではない**。
 
-TDD を厳守すればこれらの anti-pattern は構造的に発生しない。
+テストを先に書いていれば、これらの anti-pattern はほぼ発生しない。
 
-## The Iron Laws
+## 原則
 
 ```
 1. mock の振る舞いを test しない
@@ -190,7 +190,7 @@ const mockResponse = {
 - **test pass / integration fail** — mock 不完全、real API 完全
 - **誤った安心感** — real な振る舞いについて何も証明しない
 
-**Iron Rule:** mock するなら、**real な data 構造の完全形** を mock する。直近の test が使うフィールドだけではない。
+**原則:** mock するなら、**real な data 構造の完全形** を mock する。直近の test が使うフィールドだけではない。
 
 **fix:**
 
