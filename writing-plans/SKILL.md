@@ -9,8 +9,6 @@ spec / 要件を入力に、ゼロ context のエンジニアでも実行可能�
 
 エンジニアは熟練者だが「このプロジェクト固有のツール / ドメイン」は知らない前提。テスト設計も得意でないと仮定して書く。
 
-**着手の合図:** `writing-plans スキルで実装プランを書きます。` と 1 行宣言してから始める。
-
 **モード:** brainstorming で決めたモード (autonomous / guarded) を引き継ぐ。単独起動なら `cross-review` スキル (`~/.claude/skills/cross-review/SKILL.md`) の「モード判定」で決める。autonomous ではユーザーに質問せず、下記の cross-review ゲートを通して実装に引き継ぐ。
 
 **context:** worktree 上で書くなら `using-git-worktrees` スキルで先に隔離環境を作っておくこと。
@@ -55,7 +53,7 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 ```markdown
 # [機能名] 実装プラン
 
-> **実装者向け:** このプランは subagent-driven-development (推奨) または手動実行で消化する。step は `- [ ]` チェックボックスで track する。
+> **実装者向け:** このプランは下の「運用前提」に書いた実装方式 (SDD / 直列) で消化する。step は `- [ ]` チェックボックスで track する。
 
 **Goal:** [1 文で「何を作るか」]
 
@@ -80,6 +78,19 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 [モード (autonomous / guarded)、隔離方式 (worktree / branch)、ブランチ名、SDD / 直列、その他 brainstorming で固定された前提。実装フェーズへの引き継ぎ情報。]
 
 ---
+```
+
+## plan の末尾 (完了後)
+
+全 plan は最後のタスクの後に、次の節で終える。実装方式によらず同じ内容にする (SDD でも直列でも最終レビューは 1 回)。
+
+```markdown
+## 完了後
+
+1. `npm test` 等、PJ の全テストを実行して green を確認
+2. whole-branch cross-review: `BASE=$(git merge-base main HEAD)` からの diff を 1 ファイルにまとめ、新しい subagent に subagent-driven-development の `reviewer.md` で「保守担当 + 攻撃者」視点のレビューをさせる。指摘は直して再レビュー (手順は cross-review スキル)
+   - subagent を派遣できない環境では、自分で spec の各項目と diff を突き合わせ、攻撃者視点の入力例 (不正値・境界値・壊れた保存データ) を試して結果を記録する
+3. branch 上の commit で停止。push / PR / merge はユーザーの指示を待つ
 ```
 
 ## タスク構造
@@ -172,16 +183,23 @@ plan を書き終わったら、新鮮な目で spec と plan を突き合わせ
 4. **PJ 規約整合:** PJ CLAUDE.md / `.claude/rules/` 配下に定義された原則 (例: Fail Fast、命名規約、コミット規約、外部 API の利用方針など) を侵害していないか
 
 5. **Gate 付与漏れ:** リスク昇格リストに触れるタスクに `**Gate: human**` が付いているか
+6. **完了後節:** plan の末尾に「完了後」節 (全テスト → whole-branch cross-review → branch 上で停止) があるか
 
 問題を見つけたら直接 inline で fix する。再レビューは不要、直して進む。spec 要件にタスクが対応していなければタスクを足す。
 
 ## cross-review ゲート (plan)
 
-セルフレビュー後に `plan-reviewer.md` の prompt で、セッションとは異なる Claude モデルに「ゼロ context の実装者」視点でレビューさせる。手順・ループ・停止条件は cross-review スキルに従う。
+セルフレビュー後に `plan-reviewer.md` の prompt で、新しい subagent に「ゼロ context の実装者」視点でレビューさせる。手順・ループ・停止条件は cross-review スキルに従う。
 
 - **autonomous: 必須**。Approved になるまで実装に引き継がない (最大 3 往復)
 - **guarded:** plan が 5 タスク以上、または複数サブシステムにまたがるときに実施。それ以外は任意
 - 結果は spec の `## 自律判断ログ` に 1 行追記する
+
+### plan の commit
+
+レビューが Approved になった直後 (レビューをしない guarded ではセルフレビュー直後) に、plan ファイルと spec のログ追記を **1 コミット** にまとめる: `docs(plans): <機能名> の実装プラン`。各タスクの commit には plan を含めない (実装中に plan のチェックボックスを更新する場合も、タスクの commit とは分ける)。
+
+branch / worktree がまだ無い場合 (brainstorming を経由しない単独起動) は、下の「実装への引き継ぎ」で branch / worktree を用意してから、その上でこの commit をする。main には commit しない。
 
 ## 実装への引き継ぎ
 
@@ -220,7 +238,7 @@ spec / 要件はあるが brainstorming スキップで来た場合、guarded �
 ### 直列 (B / C) で消化するときの注意
 
 - タスク間でユーザーに「続けていい?」と聞かない。`**Gate: human**` のタスクの直前だけ止まる
-- 全タスク完了後、SDD と同じく whole-branch の cross-review (保守担当 + 攻撃者視点、別 Claude モデル) を 1 回通し、指摘を直してから終える
+- 全タスク完了後、plan 末尾の「完了後」節に従う (whole-branch cross-review を 1 回通し、指摘を直してから終える)
 
 ### 4 択の選び方早見表
 

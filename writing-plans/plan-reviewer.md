@@ -1,6 +1,6 @@
 # Plan Reviewer 用 prompt テンプレート
 
-実装プランを、セッションとは別の Claude モデルに「ゼロ context の実装者」視点でレビューさせるときの prompt 雛形。`cross-review` スキルの plan ゲートとして使う。
+実装プランを、新しい subagent に「ゼロ context の実装者」視点でレビューさせるときの prompt 雛形。`cross-review` スキルの plan ゲートとして使う。
 
 **目的:** plan が spec と整合し、適切にタスク分解され、この plan だけで実装者が迷わず作れるか検証する。
 
@@ -8,7 +8,7 @@
 
 ## 派遣方法
 
-`Agent` ツール (`subagent_type: general-purpose`) で、`model` を **セッションと異なる Claude モデル** に明示する (選び方は cross-review スキル 3.1)。以下の prompt を渡す。
+`Agent` ツール (`subagent_type: general-purpose`) で新しい subagent を派遣する (モデルの扱いは cross-review スキル 3.1)。以下の prompt を渡す。
 
 ```
 あなたはこの PJ を今日初めて見る実装者です。手元にあるのはこの plan と spec とリポジトリだけで、作成者に質問はできません。plan を頼りに Task 1 から順に作るとして、どこで詰まるか、どこで作成者の意図と別物を作ってしまいそうかを洗い出してください。「たぶんこういう意味だろう」と補完したくなった箇所は、補完せずに指摘してください。
