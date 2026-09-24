@@ -27,9 +27,9 @@ argument-hint: "[@file | file ...]"
 ## Step 2: レビュー方法の確認（AskUserQuestion 1回の呼び出しで2問）
 
 - Q1「どのモデルにレビューさせますか？」
-  - Fable 5 (Recommended) → subagent `model: fable`
-  - Opus 4.8 → subagent `model: opus`
-  - Sonnet 5 → subagent `model: sonnet`
+  - Fable (Recommended) → subagent `model: fable`
+  - Opus → subagent `model: opus`
+  - Sonnet → subagent `model: sonnet`
   - Codex → subagent を使わず `codex exec` を直接実行
 - Q2「レビュー結果を crit で表示しますか？」
   - crit を使う (Recommended) → コメント投稿 + UI 起動（Step 4a）
@@ -88,7 +88,7 @@ crit <file...>
 > 「Crit を http://localhost:\<port\> で開きました。\<モデル名\> のレビューコメントを確認し、返信を残して Finish Review を押してください」
 
 2. レビュー結果 JSON を scratchpad の一時ファイルに Write する（複数行 body が JSON 内にあるため、stdin パイプは使わず必ず `--file` で渡す）
-3. 一括投稿する。`--author` には**レビュアーのモデル名**を渡す（例: 'Fable 5' / 'Opus 4.8' / 'Sonnet 5' / 'Codex'）:
+3. 一括投稿する。`--author` には**レビュアーのモデル名**を渡す（例: 'Fable' / 'Opus' / 'Sonnet' / 'Codex'）:
 
 ```bash
 crit comment --json --file <tmpfile> --author '<モデル名>'

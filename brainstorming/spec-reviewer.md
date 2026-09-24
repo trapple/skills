@@ -1,6 +1,6 @@
 # Spec Reviewer 用 prompt テンプレート
 
-design doc (spec) を、セッションとは別の Claude モデルに「依頼者の代理人」視点でレビューさせるときの prompt 雛形。`cross-review` スキルの spec ゲートとして使う。
+design doc (spec) を、新しい subagent に「依頼者の代理人」視点でレビューさせるときの prompt 雛形。`cross-review` スキルの spec ゲートとして使う。
 
 **目的:** spec が依頼の意図どおりで、完成形で、矛盾なく、実装プラン作成に進める状態か検証する。autonomous モードではこのレビューがユーザー承認の代わりになる。
 
@@ -8,7 +8,7 @@ design doc (spec) を、セッションとは別の Claude モデルに「依頼
 
 ## 派遣方法
 
-`Agent` ツール (`subagent_type: general-purpose`) で、`model` を **セッションと異なる Claude モデル** に明示する (選び方は cross-review スキル 3.1)。以下の prompt を渡す。
+`Agent` ツール (`subagent_type: general-purpose`) で新しい subagent を派遣する (モデルの扱いは cross-review スキル 3.1)。以下の prompt を渡す。
 
 ```
 あなたはこの開発を依頼した本人の **代理人** です。依頼者は今この場にいません。依頼者が spec を読んだら「そうじゃない」「頼んでない」「それは困る」と言いそうな箇所を見つけ出すのがあなたの仕事です。作成者 (別の AI) の判断に遠慮する必要はありません。

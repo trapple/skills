@@ -1,28 +1,24 @@
 ---
 name: brainstorming
-description: "MUST use before any creative work — creating features, building components, adding functionality, or modifying behavior. Explores user intent / requirements / design BEFORE implementation. Use when user says \"ブレスト\", \"設計したい\", \"作りたい\", \"brainstorm\", \"設計\", or when starting any non-trivial implementation task."
+description: "Use before non-trivial feature work or changes that involve design decisions. Skip for trivial fixes (typo, a config value, an obvious single-function bug fix). Explores user intent / requirements / design BEFORE implementation. Use when user says \"ブレスト\", \"設計したい\", \"作りたい\", \"brainstorm\", \"設計\", or when starting any non-trivial implementation task."
 ---
 
 # brainstorming — アイデアを設計に落とす
 
 要件 → 設計の対話を強制する。実装着手前に「何を作るか」と「受け入れ条件」を確定し、design doc を書き出し → 実装スタイル決定 → branch / worktree を切ってから commit するまでがゴール。**main / 既定 branch に直 commit してはいけない** (design doc も対象。PJ CLAUDE.md / グローバルルールに「main 直コミット禁止」が定義されていればそれに従う)。
 
-**着手の合図:** `brainstorming スキルで設計を詰めます。モード: <autonomous|guarded> (根拠: ...)` と 1 行宣言してから始める。
-
 ## モード (autonomous / guarded)
 
 着手時に `cross-review` スキル (`~/.claude/skills/cross-review/SKILL.md`) の「モード判定」でモードを決める。**既定は Auto Mode 有効なら autonomous、それ以外は guarded**。ユーザーの「慎重に」「おまかせ」等の発話、PJ の `.claude/rules/autonomy.md`、リスク昇格リストがそれより優先する。
 
 - **guarded**: 本スキルの従来フロー通り、各ゲートでユーザー承認を取る。ただし spec はユーザーに見せる前に cross-review ゲートを通しておく
-- **autonomous**: ユーザー承認ゲートを **cross-review ゲート (別 Claude モデル + 視点指示)** に置き換え、質問で止まらず spec 確定 → branch 切り出し → writing-plans まで進む。以下、各ステップの「autonomous では」注記に従う
+- **autonomous**: ユーザー承認ゲートを **cross-review ゲート (新しい subagent + 視点指示)** に置き換え、質問で止まらず spec 確定 → branch 切り出し → writing-plans まで進む。以下、各ステップの「autonomous では」注記に従う
 
-<HARD-GATE>
-design doc を書いて **承認** されるまで、いかなる実装スキルも呼び出さない / コードも書かない / プロジェクト scaffolding もしない。「簡単そうだから」は例外にならない。承認者は guarded ではユーザー、autonomous では cross-review ゲート (Approved) 。
-</HARD-GATE>
+## 適用範囲
 
-## アンチパターン: 「これは単純だから設計は不要」
+振る舞いや設計判断を伴う変更、複数ファイルにまたがる変更で使う。自明な修正 (typo、設定値の変更、原因が明らかな 1 関数のバグ修正) は対象外で、そのまま直してよい。迷ったら短い spec を書く。
 
-todo リストでも 1 関数のユーティリティでも config 変更でも、全て設計を通す。「単純」案件こそ無検証の前提が後でツケになる。設計は短くてよい (本当に単純なら数行で OK)。**ただし承認は取る** (guarded はユーザー、autonomous は cross-review)。
+使うと決めたら、design doc が承認されるまで (guarded はユーザー、autonomous は cross-review ゲートの Approved) 実装コードは書かない。
 
 ## チェックリスト
 
@@ -32,10 +28,10 @@ todo リストでも 1 関数のユーティリティでも config 変更でも�
 2. **視覚補助の必要性を都度判定** — 「文章より図で見せた方が分かる」質問が出たときだけ視覚補助を出す。最初から提案しない。詳細は `visual-companion.md` 参照 (autonomous では skip)
 3. **明確化質問** — 一度に 1 つ。目的 / 制約 / 成功基準 を引き出す。**autonomous では質問せず**、文脈から推定して「仮定と根拠」に書く
 4. **2〜3 の選択肢提示** — トレードオフ込み、推薦付き。**autonomous では推薦案を採用**し、不採用案と理由を spec に残す
-5. **設計提示** — セクションごとに承認を取りながら進める。**autonomous では提示を省略**し、step 6 で spec にまとめて書く
+5. **設計提示** — guarded では設計をまとめて提示し、1 回で確認を取る。**autonomous では提示を省略**し、step 6 で spec にまとめて書く
 6. **design doc を書き出す (commit はまだしない)** — まず `ls docs/specs/ .claude/specs/ docs/ 2>/dev/null` で **既存 spec 配置を物理確認**。既存があればそれに揃え、無ければ `.claude/specs/YYYY-MM-DD-<topic>-design.md` を新規作成 (fallback)。**untracked のまま** 保存。**ここでは絶対に commit しない** (main 直コミット禁止)
 7. **spec セルフレビュー** — placeholder / 矛盾 / 曖昧さ / スコープを内省的にチェック (詳細後述)
-8. **cross-review ゲート (spec)** — 別 Claude モデルに「依頼者の代理人」視点でレビューさせる (両モード必須。手順は cross-review スキル、prompt は `spec-reviewer.md`)
+8. **cross-review ゲート (spec)** — 新しい subagent に「依頼者の代理人」視点でレビューさせる (両モード必須。手順は cross-review スキル、prompt は `spec-reviewer.md`)
 9. **ユーザーレビュー** — guarded のみ。autonomous は step 8 の Approved をもって承認とする
 10. **実装スタイル決定 + branch / worktree 切り出し** — 直交 2 軸 (隔離 × 並列) の 4 択から選び、branch / worktree を切る (詳細後述)。autonomous では機械的に決定
 11. **spec を branch / worktree で commit** — step 6 で untracked にしていた spec を、切ったばかりの branch / worktree でステージして commit する
@@ -93,9 +89,8 @@ flowchart TD
 
 ### 設計提示
 
-- 理解できたら段階的に設計を提示する
+- 理解できたら設計をまとめて提示する
 - 各セクションは内容量に合わせて伸縮させる。単純なら数文、複雑なら 200〜300 字
-- 各セクション直後に「ここまで合ってますか?」を挟む
 - カバーする観点: アーキテクチャ / コンポーネント / データフロー / エラーハンドリング / テスト方針
 - ズレを感じたら戻って再質問する
 - **autonomous では:** 段階提示を省略し、同じ観点を spec にまとめて書く
@@ -135,7 +130,7 @@ flowchart TD
 
 ### cross-review ゲート (spec)
 
-セルフレビュー後、**両モードで必須**。`cross-review` スキルの手順に従い、セッションとは異なる Claude モデルの subagent に `spec-reviewer.md` の prompt で「依頼者の代理人」視点のレビューをさせる。ユーザーの元の依頼文は要約せず逐語で渡す。
+セルフレビュー後、**両モードで必須**。`cross-review` スキルの手順に従い、新しい subagent に `spec-reviewer.md` の prompt で「依頼者の代理人」視点のレビューをさせる。ユーザーの元の依頼文は要約せず逐語で渡す。
 
 - `Issues Found` → 修正してから再レビュー (最大 3 往復)
 - `Needs Human` / 収束しない場合 → cross-review の「ループ」節に従う (可逆なら安全側で進めて未決事項に記録、不可逆なら停止)
@@ -197,8 +192,8 @@ guarded ではユーザーに以下を聞く (AskUserQuestion 必須。tool 利�
 
 #### autonomous での機械的決定
 
-- **並列軸**: spec から見える独立タスクが 3 つ以上なら `SDD`、それ以外は `直列`
-- **隔離軸**: `git status --porcelain` が空でない (main の作業ツリーが汚れている) / 並行作業中の branch・worktree がある / 破壊的検証を伴う → `worktree`。それ以外は `branch`
+- **並列軸**: spec から見える独立タスク (互いに順序依存がなく、別々に着手・完了できるもの) が 3 つ以上なら `SDD`、それ以外は `直列`
+- **隔離軸**: step 6 で書き出した spec を除いて `git status --porcelain` が空でない (例: `git status --porcelain | grep -v '<spec の path>'`。main の作業ツリーが汚れている) / 並行作業中の branch・worktree がある / 破壊的検証を伴う → `worktree`。それ以外は `branch`
 - 決めた選択と理由を `## 自律判断ログ` に 1 行残す
 
 決まったら:
@@ -243,10 +238,9 @@ git reset --hard HEAD~1
 - **選択肢提示が望ましい** — open-ended より answer しやすい
 - **YAGNI を貫く** — 不要機能を設計から削る
 - **必ず複数案を比較する** — 1 案で決めない
-- **段階的承認** — セクション単位で OK を取りながら前進
 - **戻る勇気** — 引っかかったら遡って再質問
 
-上の「質問」「承認」系の原則は guarded 用。autonomous では「推定した仮定を全部書き出す」「別モデルに依頼者代理人として疑わせる」「判断をログに残す」がその代わりになる。
+上の「質問」「承認」系の原則は guarded 用。autonomous では「推定した仮定を全部書き出す」「新しい subagent に依頼者代理人として疑わせる」「判断をログに残す」がその代わりになる。
 
 ## 視覚補助 (visual companion)
 

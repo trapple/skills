@@ -9,8 +9,6 @@ description: "Use when facing 2+ independent tasks that can be worked on without
 
 実装 + レビューの 2 段サブエージェントが要るなら `subagent-driven-development` スキル (重い版) を使うこと。こちらは「並列で投げる」だけ。
 
-**着手の合図:** `parallel-dispatch スキルで <N> 件の独立タスクを並列発注します。` と 1 行宣言してから始める。
-
 ## Core principle
 
 問題が独立しているなら、context を分けて並列に解かせる方が速い。自分の context も汚れない。

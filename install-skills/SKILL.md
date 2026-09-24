@@ -7,8 +7,6 @@ description: "Use when user wants to interactively browse and install Claude Cod
 
 APM (Agent Package Manager) で配布された skills repository (デフォルト `trapple/skills`) をブラウズし、必要な skill だけを `apm install` 経由で global (`~/.apm/`) または local (`./apm.yml`) に opt-in 導入する。
 
-**着手の合図:** `install-skills スキルで進めます。` と 1 行宣言してから始める。
-
 ## いつ使うか
 
 - ユーザーが「`install-skills`」「`スキル導入`」「`skill install`」「`スキル入れて`」「`apm スキル`」と発話したとき

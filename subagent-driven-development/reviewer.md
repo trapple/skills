@@ -116,7 +116,7 @@ prompt:
 
 ## 埋めるべき placeholder
 
-- `[REQUIRED]` — モデル ID (例: `claude-sonnet-4-6` / `claude-opus-4-8` / `claude-haiku-4-5-20251001`)
+- `[REQUIRED]` — モデル (Agent ツールのエイリアス `sonnet` / `opus` / `haiku` / `fable`。固定 ID は古くなるので書かない)
 - `[BRIEF_FILE]` — `.claude/sdd/task-N-brief.md`
 - `[GLOBAL_CONSTRAINTS]` — plan の Global Constraints を逐語コピー。**PJ CLAUDE.md / `.claude/rules/` 配下に恒久ルール** (Fail Fast、命名規約、外部 API 利用方針、ドメイン固有の罠など) があればここに **必ず** 含める。例として頻出するもの:
   - Fail Fast (silent skip / try-catch して続行 禁止)

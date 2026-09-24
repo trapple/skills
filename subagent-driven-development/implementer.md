@@ -153,7 +153,7 @@ prompt:
 
 ## 埋めるべき placeholder
 
-- `[REQUIRED]` — モデル ID (`claude-sonnet-4-6` / `claude-opus-4-8` / `claude-haiku-4-5-20251001` 等)
+- `[REQUIRED]` — モデル (Agent ツールのエイリアス `sonnet` / `opus` / `haiku` / `fable`。固定 ID は古くなるので書かない)
 - `[BRIEF_FILE]` — `.claude/sdd/task-N-brief.md`
 - `[WORK_DIR]` — worktree path or `.`
 - `[REPORT_FILE]` — `.claude/sdd/task-N-report.md`

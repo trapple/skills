@@ -9,8 +9,6 @@ description: "Use when starting feature work that needs isolation from current w
 
 **Core principle:** **既存の隔離を先に検出する**。そのあと native tools。最後に git。harness と戦わない。
 
-**着手の合図:** `using-git-worktrees スキルで隔離 workspace を用意します。` と 1 行宣言してから始める。
-
 ## Step 0: 既存の隔離を検出する
 
 新しい worktree を作る前に、**いま既に linked worktree の中にいないか** 確認する。
