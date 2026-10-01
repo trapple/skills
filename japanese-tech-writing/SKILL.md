@@ -9,6 +9,8 @@ description: Japanese technical-writing style rules for drafting and revising te
 > <https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d> から拝借したものです。
 > 原著者により [Unlicense](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d?permalink_comment_id=6210840#gistcomment-6210840)（パブリックドメイン相当）で公開されています。
 > 本ディレクトリの `LICENSE` に Unlicense 全文を同梱しています。
+>
+> `references/ai-slop-catalog.md`（AI っぽい語彙の辞書）は nanaism 氏の [yomiyasu](https://github.com/nanaism/yomiyasu) から同梱したものです（MIT License、全文は `LICENSE-yomiyasu`）。
 
 日本語で技術的な原稿（書籍の章、記事、解説文）を書く・推敲するときは、以下の規範に従う。
 
@@ -114,6 +116,8 @@ LLM が大量生成する、中身のない型に誘惑されない。書き上�
 
 悪い例：「本章では、〇〇の理論を正面から扱う」「この前提を、ここで正面から回収する」「多角的に分析すると、重要なのは〜である」。
 良い例：「本章では、〇〇の理論を扱う」「ここで、この前提を回収する」「評価の核心は、正しさを誰が知っているかにある」。
+
+上の一覧に無い AI っぽい語彙（「静かに壊れる」「時間を溶かす」のような比喩動詞、英語直訳調、「解像度」「肌感」のような質感を装う語、体験の壮大化など）は、`references/ai-slop-catalog.md` で点検する。辞書の「修正方針」に挙がる言い換え候補が本スキルの規範と食い違う場合（「不可欠な」「掘り下げて」など）は、本スキルの規範を優先し、別の具体的な言い方を探す。
 
 ## 冗長の排除
 
