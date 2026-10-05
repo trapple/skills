@@ -14,7 +14,7 @@ prompt:
 
   task brief を読む: [BRIEF_FILE]
 
-  この task に bind する Global Constraints (plan / spec から逐語コピー):
+  この task に bind する Global Constraints (plan の Global Constraints から逐語コピー):
   [GLOBAL_CONSTRAINTS]
 
   ## implementer の主張

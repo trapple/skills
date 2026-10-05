@@ -1,269 +1,204 @@
 ---
 name: brainstorming
-description: "Use before non-trivial feature work or changes that involve design decisions. Skip for trivial fixes (typo, a config value, an obvious single-function bug fix). Explores user intent / requirements / design BEFORE implementation. Use when user says \"ブレスト\", \"設計したい\", \"作りたい\", \"brainstorm\", \"設計\", or when starting any non-trivial implementation task."
+description: "Discuss intent and design with the user before implementing, then record any real design decision as an ADR. Does not write a spec. Invoke only when the user explicitly asks for a design discussion — do not auto-invoke for ordinary implementation work. Use when user says \"ブレスト\", \"設計したい\", \"設計相談\", \"brainstorm\", \"設計\"."
 ---
 
-# brainstorming — アイデアを設計に落とす
+# brainstorming — 意図を揃えて設計判断を下す
 
-要件 → 設計の対話を強制する。実装着手前に「何を作るか」と「受け入れ条件」を確定し、design doc を書き出し → 実装スタイル決定 → branch / worktree を切ってから commit するまでがゴール。**main / 既定 branch に直 commit してはいけない** (design doc も対象。PJ CLAUDE.md / グローバルルールに「main 直コミット禁止」が定義されていればそれに従う)。
+実装に入る前に、依頼者と対話して「何を作るか」の解釈を揃え、設計上の選択肢から 1 つを選ぶ。**仕様書 (spec / design doc) は書かない**。文書として残すのは、後から「なぜこうしたか」を問われうる設計判断の **ADR** だけ。
+
+- 意図のすり合わせは会話で完結させる。合意内容をファイルに書き出さない
+- 設計判断は ADR に残す。判断が無ければ ADR も書かない
+
+## 前提
+
+実装前に spec を書かせても実装品質は上がらず、コストと時間だけが増えることをベンチマークで確認している (`trapple/sdd-bench`)。このスキルの価値は spec ではなく、(1) 依頼者の頭の中と解釈を揃える対話と、(2) 設計判断の記録にある。
+
+## 使う場面
+
+ユーザーが明示的に呼んだときだけ使う。普段の実装では使わない。
+
+- 依頼の解釈が複数あり、どれを作るかで結果が大きく変わる
+- 技術選定・データモデル・境界の切り方など、後から変えにくい設計判断がある
+- 規模が大きく、writing-plans で plan を書いてから実装したい
+
+自明な修正や、解釈が 1 つに決まる依頼では使わない。そのまま実装する。
 
 ## モード (autonomous / guarded)
 
 着手時に `cross-review` スキル (`~/.claude/skills/cross-review/SKILL.md`) の「モード判定」でモードを決める。**既定は Auto Mode 有効なら autonomous、それ以外は guarded**。ユーザーの「慎重に」「おまかせ」等の発話、PJ の `.claude/rules/autonomy.md`、リスク昇格リストがそれより優先する。
 
-- **guarded**: 本スキルの従来フロー通り、各ゲートでユーザー承認を取る。ただし spec はユーザーに見せる前に cross-review ゲートを通しておく
-- **autonomous**: ユーザー承認ゲートを **cross-review ゲート (新しい subagent + 視点指示)** に置き換え、質問で止まらず spec 確定 → branch 切り出し → writing-plans まで進む。以下、各ステップの「autonomous では」注記に従う
+- **guarded**: 質問・選択肢の提示・合意の確認をユーザーと行う
+- **autonomous**: 質問で止まらない。文脈から推定し、推薦案を採用して進む。推定した仮定は最終報告 (plan を書く場合は plan の `## 自律判断ログ`) に書く
 
-## 適用範囲
+## 流れ
 
-振る舞いや設計判断を伴う変更、複数ファイルにまたがる変更で使う。自明な修正 (typo、設定値の変更、原因が明らかな 1 関数のバグ修正) は対象外で、そのまま直してよい。迷ったら短い spec を書く。
-
-使うと決めたら、design doc が承認されるまで (guarded はユーザー、autonomous は cross-review ゲートの Approved) 実装コードは書かない。
-
-## チェックリスト
-
-順に TaskCreate でタスク化し、消化していく。
-
-1. **プロジェクト文脈の把握 + モード判定** — 既存ファイル / docs / 直近 commit を確認し、cross-review の基準でモードを決めて宣言
-2. **視覚補助の必要性を都度判定** — 「文章より図で見せた方が分かる」質問が出たときだけ視覚補助を出す。最初から提案しない。詳細は `visual-companion.md` 参照 (autonomous では skip)
-3. **明確化質問** — 一度に 1 つ。目的 / 制約 / 成功基準 を引き出す。**autonomous では質問せず**、文脈から推定して「仮定と根拠」に書く
-4. **2〜3 の選択肢提示** — トレードオフ込み、推薦付き。**autonomous では推薦案を採用**し、不採用案と理由を spec に残す
-5. **設計提示** — guarded では設計をまとめて提示し、1 回で確認を取る。**autonomous では提示を省略**し、step 6 で spec にまとめて書く
-6. **design doc を書き出す (commit はまだしない)** — まず `ls docs/specs/ .claude/specs/ docs/ 2>/dev/null` で **既存 spec 配置を物理確認**。既存があればそれに揃え、無ければ `.claude/specs/YYYY-MM-DD-<topic>-design.md` を新規作成 (fallback)。**untracked のまま** 保存。**ここでは絶対に commit しない** (main 直コミット禁止)
-7. **spec セルフレビュー** — placeholder / 矛盾 / 曖昧さ / スコープを内省的にチェック (詳細後述)
-8. **cross-review ゲート (spec)** — 新しい subagent に「依頼者の代理人」視点でレビューさせる (両モード必須。手順は cross-review スキル、prompt は `spec-reviewer.md`)
-9. **ユーザーレビュー** — guarded のみ。autonomous は step 8 の Approved をもって承認とする
-10. **実装スタイル決定 + branch / worktree 切り出し** — 直交 2 軸 (隔離 × 並列) の 4 択から選び、branch / worktree を切る (詳細後述)。autonomous では機械的に決定
-11. **spec を branch / worktree で commit** — step 6 で untracked にしていた spec を、切ったばかりの branch / worktree でステージして commit する
-12. **writing-plans へ遷移** — 実装プラン作成スキルに引き継ぐ
-
-## 進行フロー
+1. **文脈把握 + モード判定** — 既存ファイル / docs / 直近 commit / 既存 ADR を確認し、モードを宣言する
+2. **明確化質問** — 一度に 1 つ。目的 / 制約 / 成功基準を引き出す。**autonomous では質問せず**、コード / docs / user-journey / CLAUDE.md / 依頼文から推定する
+3. **選択肢の提示** — 設計判断があるときだけ。2〜3 案をトレードオフと推薦付きで出す。**autonomous では推薦案を採用**する
+4. **合意内容の要約** — 何を作るか・受け入れ条件・採用した案を会話の中で短くまとめる。guarded では 1 回で確認を取る。**ファイルには書かない**
+5. **ADR を書くか判定し、必要なら書く** (下記「ADR」)
+6. **実装へ引き継ぐ** (下記「実装への引き継ぎ」)
 
 ```mermaid
 flowchart TD
     A[文脈把握 + モード判定] --> MODE{モード}
-    MODE -->|guarded| B[明確化質問]
-    B --> C[2-3 選択肢提示]
-    C --> D[セクション別に設計提示]
-    D --> E{承認?}
-    E -->|要修正| D
-    E -->|承認| F[design doc 書き出し<br/>untracked のまま、commit しない]
-    MODE -->|autonomous| AF[推定 + 推薦案採用<br/>仮定と根拠を記録]
-    AF --> F
-    F --> G[spec セルフレビュー]
-    G --> X{cross-review<br/>依頼者代理人視点}
-    X -->|Issues<br/>最大 3 往復| F
-    X -->|Approved / guarded| H{ユーザーレビュー OK?}
-    X -->|Approved / autonomous| I
-    H -->|要修正| F
-    H -->|承認| I{実装スタイル<br/>隔離 × 並列}
-    I -->|A: worktree + SDD| J[using-git-worktrees<br/>worktree 切る]
-    I -->|B: branch + 直列| K[git switch -c]
-    I -->|C: worktree + 直列| M[using-git-worktrees<br/>worktree 切る]
-    I -->|D: branch + SDD| N[git switch -c]
-    J --> P[spec を branch / worktree で commit]
-    K --> P
-    M --> P
-    N --> P
-    P --> L[writing-plans スキルへ]
+    MODE -->|guarded| B[明確化質問 1 回 1 問]
+    MODE -->|autonomous| AF[文脈から推定<br/>推薦案を採用]
+    B --> C{設計判断あり?}
+    C -->|Yes| D[2-3 案を提示]
+    C -->|No| S
+    D --> S[合意内容を会話で要約<br/>guarded は確認]
+    AF --> S
+    S --> R{記録すべき<br/>設計判断?}
+    R -->|Yes| ADR[ADR を書く]
+    R -->|No| H
+    ADR --> H{規模}
+    H -->|小〜中| I[branch を切って<br/>このセッションで実装]
+    H -->|大 / 並列向き| W[実装スタイル決定 → writing-plans]
 ```
-
-**遷移先は writing-plans のみ**。他の実装系スキル (frontend-design, mcp-builder 等) は brainstorming からは直接呼ばない。
 
 ## プロセス詳細
 
 ### アイデア理解
 
-- まず現状を見る (ファイル / docs / 直近 commit)
-- 質問する前にスコープを見積もる。「chat + storage + billing + analytics をプラットフォーム化したい」のように複数の独立サブシステムを含む要望は **その場で指摘** する。1 つの spec に収まらない案件は decomposition が先
-- 大きすぎる場合: サブプロジェクトに分解 → 各サブプロジェクトに対して [spec → plan → 実装] サイクルを 1 つずつ回す
-- 適切なサイズなら **質問は一度に 1 つ**。選択肢があるなら multiple choice に。1 メッセージ 1 質問
+- まず現状を見る (ファイル / docs / 直近 commit / 既存 ADR)
+- 質問する前にスコープを見積もる。「chat + storage + billing + analytics をプラットフォーム化したい」のように複数の独立サブシステムを含む要望は **その場で指摘** し、サブプロジェクトに分解して 1 つずつ進める
+- 適切なサイズなら **質問は一度に 1 つ**。選択肢があるなら multiple choice に
 - 焦点: 目的 / 制約 / 成功基準
-- **autonomous では:** 質問の代わりに、コード / docs / user-journey / CLAUDE.md / 依頼文から答えを推定する。推定した内容は spec の `## 仮定と根拠` に「仮定 — 根拠 (ファイル / 依頼文の該当箇所)」の形で全て書く。根拠が見つからず、しかも間違えると不可逆な論点だけは cross-review の停止条件に従って止まる。スコープ過大で分解が必要な場合も、分解案を spec に書き、最初のサブプロジェクトだけを今回のスコープとして進める
+- **autonomous では:** 質問の代わりに推定する。根拠が見つからず、しかも間違えると不可逆な論点だけは cross-review の停止条件に従って止まる
 
 ### 選択肢提示
 
 - 2〜3 通りの方向性 + それぞれのトレードオフ
 - 推薦案を先頭、理由を添える
-- **autonomous では:** 比較は spec の `## 検討した選択肢` に書き、推薦案を採用して進む (ユーザーに選ばせない)
-
-### 設計提示
-
-- 理解できたら設計をまとめて提示する
-- 各セクションは内容量に合わせて伸縮させる。単純なら数文、複雑なら 200〜300 字
-- カバーする観点: アーキテクチャ / コンポーネント / データフロー / エラーハンドリング / テスト方針
-- ズレを感じたら戻って再質問する
-- **autonomous では:** 段階提示を省略し、同じ観点を spec にまとめて書く
+- 選択肢が実質 1 つしか無いなら提示しない (形だけの比較をしない)
 
 ### 疎結合と明確さを設計に織り込む
 
 - 1 つの責務 / well-defined interface / 単独で理解・テスト可能 な単位にシステムを分割する
-- 各単位について「何をするか / どう使うか / 何に依存するか」を答えられるか確認する
 - 内部を読まずに用途が分かるか? consumer を壊さず内部を変えられるか? 答えが No なら境界を見直す
-- 小さく境界が明確なファイルは Claude にとっても扱いやすい (context に丸ごと載せられる)。大きく成長したファイルは「責務が多すぎる」サイン
 
 ### 既存コードベースで作業するとき
 
-- 提案前に既存構造を眺めて従う
-- 既存コードに「今回の仕事に影響する問題」がある場合は限定的な改善も設計に含める (良い developer が触れたコードをついでに直すように)
-- 関係ないリファクタは混ぜない。今回のゴールに集中
+- 提案前に既存構造を眺めて従う。既存 ADR の決定に反する案を出すときは、その ADR を名指しして覆す理由を述べる
+- 関係ないリファクタは混ぜない
 
-## 設計後
+## ADR
 
-### ドキュメント化 (commit はまだしない)
+### 書くとき / 書かないとき
 
-- 確定 spec を **untracked のまま** 書き出す。配置先は: ① `ls docs/specs/ .claude/specs/ docs/ 2>/dev/null` で **既存 spec ディレクトリを物理確認** → ② 既存があれば揃える、無ければ `.claude/specs/YYYY-MM-DD-<topic>-design.md` を新規作成 (default fallback)
-- **この時点では絶対に commit しない**。「main 直コミット禁止」は design doc にも適用される (実装に入る前に必ず branch / worktree を切る)
-- ファイルを書き出した時点で `git status` には untracked として現れる。spec セルフレビュー / ユーザーレビューはこの untracked ファイルに対して行う
-- commit は step 11 (実装スタイル決定 + branch / worktree 切り出しの後) に行う
+書くのは、次のどれかに当てはまる設計判断が **実際に下された** とき。
 
-### spec セルフレビュー
+- 2 つ以上の現実的な選択肢を比較して 1 つを選んだ
+- 後から変えにくい (データモデル、公開 API、依存ライブラリ、境界の切り方)
+- PJ の慣習や既存 ADR から外れる
 
-書いた spec を新鮮な目で見直す:
+書かないもの: 機能の仕様・受け入れ条件・タスク分解・実装手順 (それはコードと plan が持つ)。選択肢が 1 つしか無かった判断。
 
-1. **placeholder 走査:** `TBD` / `TODO` / 未完セクション / 曖昧要件 → その場で fix
-2. **内部整合性:** セクション間に矛盾はないか? アーキテクチャと機能記述が噛み合っているか?
-3. **スコープチェック:** 1 つの実装 plan に収まるか? 分解が必要なら戻る
-4. **曖昧性チェック:** 2 通り解釈できる要件はないか? あれば 1 つに決める
+### 置き場所と名前
 
-問題を見つけたら直接書き換える。再レビューは不要、直して進む。
+1. `ls docs/adr/ docs/decisions/ doc/adr/ adr/ 2>/dev/null` で既存の配置を確認し、あればそれに揃える (番号付けと書式も既存に合わせる)
+2. 無ければ `docs/adr/NNNN-<kebab-case-title>.md` を作る。`NNNN` は 0001 からの連番
 
-### cross-review ゲート (spec)
+### 書式
 
-セルフレビュー後、**両モードで必須**。`cross-review` スキルの手順に従い、新しい subagent に `spec-reviewer.md` の prompt で「依頼者の代理人」視点のレビューをさせる。ユーザーの元の依頼文は要約せず逐語で渡す。
+```markdown
+# NNNN. <決定内容を表す短いタイトル>
 
-- `Issues Found` → 修正してから再レビュー (最大 3 往復)
-- `Needs Human` / 収束しない場合 → cross-review の「ループ」節に従う (可逆なら安全側で進めて未決事項に記録、不可逆なら停止)
-- autonomous では spec 末尾の `## 自律判断ログ` にモード・仮定・選択・レビュー結果を追記する
+- Status: Accepted
+- Date: YYYY-MM-DD
 
-### ユーザーレビュー (guarded のみ)
+## Context
 
-autonomous では skip し、cross-review の Approved をもって承認とする。
+<判断が必要になった状況・制約・前提。依頼の要旨もここに含める>
 
-guarded では cross-review 通過後、ユーザーに確認を求める:
+## Decision
 
-> spec を `<path>` に書きました。実装プラン作成に進む前に確認をお願いします。
+<何を選んだか。1〜3 文>
 
-応答待ち。修正要求があれば直してセルフレビューに戻る。承認されたら次へ。cross-review の結果 (指摘と対応) も一緒に要約して見せると、ユーザーが確認に使える。
+## Considered Options
 
-### 実装スタイル決定 + branch / worktree 切り出し
+- <採用案> — <長所 / 短所>
+- <不採用案> — <長所 / 短所、不採用の理由>
 
-spec 承認後、writing-plans に進む **前** に実装スタイルを決める。後でひっくり返すと plan の前提 (タスク分割粒度 / 並列前提) が崩れるので、ここで確定させる。
+## Consequences
 
-直交 2 軸の組み合わせから 4 択:
+<この決定で楽になること・難しくなること・将来見直す条件>
+```
+
+- 既存 ADR を覆すときは新しい ADR を書き、旧 ADR の Status を `Superseded by NNNN` に変える (旧 ADR の本文は消さない)
+- 規模が大きく、ADR 自体を別の目で見たいときは cross-review の「懐疑的なアーキテクト」視点でレビューしてよい (任意)
+
+### commit
+
+ADR も **main / 既定 branch に直 commit しない**。実装用の branch / worktree を切ってから、その上で commit する (`docs(adr): NNNN <タイトル>`)。実装の commit とは分ける。
+
+## 実装への引き継ぎ
+
+### 小〜中規模: このセッションで実装
+
+`git switch -c <branch>` で branch を切り、合意内容に沿ってそのまま実装する。ADR があれば最初に commit する。
+
+### 大規模・並列向き: 実装スタイルを決めて writing-plans へ
+
+直交 2 軸の組み合わせから 4 択で実装スタイルを決め、branch / worktree を切ってから `writing-plans` を呼ぶ。writing-plans には **依頼文 (逐語)・会話で合意した内容の要約・関連 ADR の path** を渡す。
 
 - **隔離軸**: `worktree` (別ディレクトリで隔離) or `branch` (このセッションで branch だけ切る)
-- **並列軸**: `SDD` (subagent-driven-development で並列) or `直列` (このセッションで私が順に実装)
+- **並列軸**: `SDD` (subagent-driven-development で並列) or `直列` (このセッションで順に実装)
 
-guarded ではユーザーに以下を聞く (AskUserQuestion 必須。tool 利用不可な環境では markdown 表 + 番号付き選択肢で代替)。autonomous では聞かずに下記「autonomous での機械的決定」で決める:
+guarded ではユーザーに 4 択を聞く (AskUserQuestion。tool 利用不可な環境では markdown 表 + 番号付き選択肢で代替)。autonomous では下記「autonomous での機械的決定」で決める。
 
 - **A. worktree + SDD** — 隔離環境 × subagent 駆動。大規模 / 並列向け
-- **B. branch + 直列** — branch のみ、このセッションで私が順に実装。小〜中規模 / 1 本道
+- **B. branch + 直列** — branch のみ、このセッションで順に実装。小〜中規模 / 1 本道
 - **C. worktree + 直列** — worktree で隔離して直列、subagent なし
 - **D. branch + SDD** — branch のみ、このセッションで SDD
 
 #### 軸ごとの判断材料
 
 **隔離 (worktree) を選ぶとき:**
-- main で別ブランチ作業を並行で走らせたい (worktree なら作業ツリーが独立)
+- main で別ブランチ作業を並行で走らせたい
 - 破壊的検証 (DB / 外部 API / 大量 rename 等) を main から隔離したい
-- SDD と組み合わせるなら subagent が main の作業ツリーを汚す問題を回避できる
+- SDD と組み合わせて、subagent が main の作業ツリーを汚す問題を避けたい
 
 **branch (現セッションのまま) を選ぶとき:**
-- 並行する別作業はない / main 側を切り替えても困らない
-- worktree セットアップのオーバーヘッドを払いたくない (小〜中規模)
-- 既存セッション context をそのまま実装に引き継ぎたい
+- 並行する別作業はない / worktree セットアップのオーバーヘッドを払いたくない
+- 既存セッションの context をそのまま実装に引き継ぎたい
 
 **SDD を選ぶとき:**
 - タスクが疎結合に分割できる (≥3 並列タスクが見える)
-- 各タスクが新鮮 context で attack できる方が品質が出る (レビュー & 反復のループを subagent に閉じる)
 
 **直列を選ぶとき:**
 - タスクが 1 本道 / 共有 state が大きい / 順序依存が強い
-- ブレスト〜実装の文脈を切らずに一気通貫で進めたい
 - subagent 起動コスト (token / wall-clock) を払う価値がない規模
-
-#### 4 択早見表
-
-| | 直列 | SDD |
-|---|---|---|
-| **branch** | **B**: 小〜中規模・1 本道。最も軽量 | **D**: 並列したいが worktree オーバーヘッドなし。subagent 間のファイル競合に注意 |
-| **worktree** | **C**: 隔離は欲しいが subagent 起動コストは払いたくない | **A**: 大規模・並列。最も重装備 |
 
 #### autonomous での機械的決定
 
-- **並列軸**: spec から見える独立タスク (互いに順序依存がなく、別々に着手・完了できるもの) が 3 つ以上なら `SDD`、それ以外は `直列`
-- **隔離軸**: step 6 で書き出した spec を除いて `git status --porcelain` が空でない (例: `git status --porcelain | grep -v '<spec の path>'`。main の作業ツリーが汚れている) / 並行作業中の branch・worktree がある / 破壊的検証を伴う → `worktree`。それ以外は `branch`
-- 決めた選択と理由を `## 自律判断ログ` に 1 行残す
+- **並列軸**: 互いに順序依存がなく別々に着手・完了できるタスクが 3 つ以上見えるなら `SDD`、それ以外は `直列`
+- **隔離軸**: `git status --porcelain` が空でない (main の作業ツリーが汚れている) / 並行作業中の branch・worktree がある / 破壊的検証を伴う → `worktree`。それ以外は `branch`
 
 決まったら:
 
-- **A / C** (worktree あり): `using-git-worktrees` スキルを呼んで worktree を準備 (branch 名はここで確定)
-- **B / D** (worktree なし): `git switch -c <branch>` をこのセッションで実行
-
-### spec を branch / worktree で commit
-
-branch / worktree が切れたら、step 6 で untracked にしていた spec を、切ったばかりの branch / worktree でステージして commit する。**ここまでが brainstorming スキルの責務**。
-
-- **B / D** (branch のみ、worktree なし): 切った branch でそのまま commit
-  ```bash
-  git add .claude/specs/YYYY-MM-DD-<topic>-design.md
-  git commit -m "docs(specs): <topic> の設計"
-  ```
-- **A / C** (worktree あり): spec ファイルを worktree に **複製して持ち込む** (`cp` → main 側 untracked を `rm`)、worktree 側で `git add` + `git commit`。main 側に spec の untracked を残さない
-
-#### 事故ガード: main 直 commit してしまったら
-
-spec を **誤って main に直 commit してしまった** ことに気付いたら、即座に巻き戻す:
-
-```bash
-# 1. 一時 branch で commit を保全
-git branch wip/<topic>-spec HEAD
-# 2. main を 1 つ戻す (push 前提なので reset --hard で OK)
-git reset --hard HEAD~1
-# 3. 上記の「branch / worktree で commit」フローに戻る
-#    (一時 branch から spec ファイルを取り出すか、checkout して移す)
-```
-
-### 実装プラン作成へ
-
-- `writing-plans` スキルを呼び出す
-- 上で **A / D (SDD あり)** を選んだ場合は「subagent 駆動で消化する前提の plan」を依頼する (= タスクが独立して走れる粒度に切る)
-- **B / C (直列)** を選んだ場合は通常粒度の plan で OK (順序依存も許容)
-- それ以外のスキルは呼ばない
+- **A / C** (worktree あり): `using-git-worktrees` スキルで worktree を準備する
+- **B / D** (worktree なし): `git switch -c <branch>` をこのセッションで実行する
 
 ## 鍵となる原則
 
 - **質問は 1 回 1 つ** — 複数を一度に投げない
 - **選択肢提示が望ましい** — open-ended より answer しやすい
 - **YAGNI を貫く** — 不要機能を設計から削る
-- **必ず複数案を比較する** — 1 案で決めない
-- **戻る勇気** — 引っかかったら遡って再質問
-
-上の「質問」「承認」系の原則は guarded 用。autonomous では「推定した仮定を全部書き出す」「新しい subagent に依頼者代理人として疑わせる」「判断をログに残す」がその代わりになる。
+- **文書は判断だけ** — 合意内容は会話で、設計判断は ADR で。spec は書かない
 
 ## 視覚補助 (visual companion)
 
-「文章で書くより図 / 表 / モックを見せた方が早く伝わる質問」が出てきたときだけ、視覚補助を提案する。最初から押し付けない。
+「文章で書くより図 / 表 / モックを見せた方が早く伝わる質問」が出てきたときだけ、視覚補助を提案する。最初から押し付けない。詳細は `visual-companion.md` を参照 (autonomous では skip)。
 
-提案するときは **その offer 単独のメッセージで**:
-
-> ここから先は図で見せた方が早そうです。Mermaid 図 / 比較表 / Markdown モック で出していいですか?
-
-承認後、各質問について「テキストで十分か / 視覚補助を出すか」を都度判定する。詳細は `visual-companion.md` を参照。
-
-視覚補助はテキスト手段に閉じる:
-
-- **Mermaid 図** (Markdown コードブロック) — 状態遷移 / コンポーネント関係
-- **Markdown 表** — 選択肢比較 (pros/cons / 機能対応表)
-- **コードブロックモック** — ASCII / monospace で UI レイアウト
-- **AskUserQuestion の preview** — 並べて見せたい選択肢が ASCII で表現できるなら preview に積む
+視覚補助はテキスト手段に閉じる: Mermaid 図 / Markdown 表 / コードブロックモック / AskUserQuestion の preview。
 
 ## プロジェクト固有資産との接続 (あれば使う)
 
-PJ 側に以下があれば必ず参照する。無ければ skip:
-
-- **`user-journey` スキル** (PJ 蓄積の長期要件 DB): repo root に `data/user_journey.db` が物理的に存在する PJ でのみ適用。存在する場合は仕様判断のとき過去要件を **必ず先に検索** して、長期方針との衝突を避ける
-- **`.claude/rules/autonomy.md`** (モード宣言): あればモード判定に使う (cross-review スキル参照)
-- **`.claude/rules/error-handling.md` (Fail Fast 原則)**: 定義されていれば design 段階でも適用する。silent skip / try-catch して続行 を設計レベルで埋め込まない
-- **PJ CLAUDE.md の運用方針**: main 直コミット禁止 / commit message 規約 / spec 配置規約などを優先する
+- **`user-journey` スキル**: repo root に `data/user_journey.db` が物理的に存在する PJ でのみ適用。仕様判断のとき過去要件を先に検索して、長期方針との衝突を避ける
+- **既存 ADR**: 判断の前に読み、矛盾する場合は Supersede の手順を取る
+- **`.claude/rules/autonomy.md`** (モード宣言): あればモード判定に使う
+- **`.claude/rules/error-handling.md` (Fail Fast 原則)**: 定義されていれば設計段階でも適用する
+- **PJ CLAUDE.md の運用方針**: main 直コミット禁止 / commit message 規約 / ADR 配置規約などを優先する

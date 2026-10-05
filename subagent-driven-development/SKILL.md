@@ -65,7 +65,7 @@ Task 1 派遣前に 1 度だけ plan を scan:
 見つけたら **まとめて 1 件の adjudication にする** (各 finding と plan の該当箇所を並べて「どちらが govern するか」)。実行開始後に途中で割り込ませない。clean なら無言で進む。
 
 - **guarded:** まとめた 1 質問をユーザーに提示する
-- **autonomous:** まとめた finding を cross-review の「中立な裁定者」視点で新しい subagent に裁定させる (依頼文逐語 / spec / plan / PJ 規約の path を渡す)。裁定に従って plan を直し、`Pre-flight: <finding 要旨> → <裁定> (<model>)` を ledger に記録して Task 1 に進む。裁定が `Needs Human` で、しかも不可逆な論点のときだけユーザーに聞く
+- **autonomous:** まとめた finding を cross-review の「中立な裁定者」視点で新しい subagent に裁定させる (依頼文逐語 / plan / 関連 ADR / PJ 規約の path を渡す)。裁定に従って plan を直し、`Pre-flight: <finding 要旨> → <裁定> (<model>)` を ledger に記録して Task 1 に進む。裁定が `Needs Human` で、しかも不可逆な論点のときだけユーザーに聞く
 
 **skip は不可:** Auto Mode や「clarifying question を避ける」directive があっても、pre-flight 自体は省略しない。pre-flight は「実行開始前の plan vs 規約の整合」を確認する process gate で、skip すると SDD の他の不可逆行動 (commit / 派遣) が plan-mandated defect に汚染される。Auto Mode で変わるのは **裁定者が人間かレビュアー subagent か** だけ。
 
@@ -206,7 +206,7 @@ plan で `**Gate: human**` が付いたタスクは、**モードに関係なく
 
 1. whole-branch cross-review (上記) を通し、指摘は ONE fix subagent で直して再レビュー
 2. **branch 上の commit で停止する**。push / PR 作成 / merge はしない (ユーザーの指示を待つ)
-3. 成果サマリを出す: branch 名、commit 範囲、テスト結果、ledger と spec の自律判断ログにある **未決事項** と adjudication の一覧
+3. 成果サマリを出す: branch 名、commit 範囲、テスト結果、ledger と plan の自律判断ログにある **未決事項** と adjudication の一覧
 4. PushNotification が使える環境なら完了を通知する
 
 ## prompt template

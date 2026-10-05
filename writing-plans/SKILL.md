@@ -1,11 +1,11 @@
 ---
 name: writing-plans
-description: "Use when you have a spec or requirements for a multi-step task, before touching code. Use when user says \"プラン書いて\", \"実装計画\", \"writing plans\", \"plan を作って\", or after brainstorming approves a spec."
+description: "Use when you have requirements for a multi-step task, before touching code. Use when user says \"プラン書いて\", \"実装計画\", \"writing plans\", \"plan を作って\", or when brainstorming hands off a large task."
 ---
 
 # writing-plans — 実装プランを書く
 
-spec / 要件を入力に、ゼロ context のエンジニアでも実行可能な実装プランを書く。bite-size タスクに分解し、各タスクは「テスト書く → 失敗確認 → 最小実装 → 通過確認 → commit」の単位まで落とす。DRY / YAGNI / TDD / 頻繁な commit が原則。
+要件 (依頼文・brainstorming で合意した内容・関連 ADR) を入力に、ゼロ context のエンジニアでも実行可能な実装プランを書く。spec は前提にしない。bite-size タスクに分解し、各タスクは「テスト書く → 失敗確認 → 最小実装 → 通過確認 → commit」の単位まで落とす。DRY / YAGNI / TDD / 頻繁な commit が原則。
 
 エンジニアは熟練者だが「このプロジェクト固有のツール / ドメイン」は知らない前提。テスト設計も得意でないと仮定して書く。
 
@@ -17,7 +17,7 @@ spec / 要件を入力に、ゼロ context のエンジニアでも実行可能�
 
 ## スコープチェック
 
-spec が複数の独立サブシステムを含んでいる場合、brainstorming 段階で分解しておくべきだった。もし分解せずにここまで来てしまったら **plan を 1 つでも書く前にユーザーに decompose を提案** する (guarded)。autonomous では分解案を plan 冒頭に書き、最初のサブプロジェクトだけの plan を書いて進む (残りは自律判断ログの未決事項へ)。各 plan は単独で動くソフトウェアを生むサイズに収める。
+要件が複数の独立サブシステムを含んでいる場合、brainstorming 段階で分解しておくべきだった。もし分解せずにここまで来てしまったら **plan を 1 つでも書く前にユーザーに decompose を提案** する (guarded)。autonomous では分解案を plan 冒頭に書き、最初のサブプロジェクトだけの plan を書いて進む (残りは自律判断ログの未決事項へ)。各 plan は単独で動くソフトウェアを生むサイズに収める。
 
 ## ファイル構造を先に決める
 
@@ -65,9 +65,9 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 
 以下の 3 種を **サブセクションに分離して** 列挙する。混ぜない。各タスクの要件にはこのセクションが暗黙に含まれる。**該当情報がないサブセクションは見出しを残し、本文に `該当なし` と 1 行書く** (見出しごと削除しない — テンプレート構造を読者が確認できるようにするため)。
 
-### Spec 由来 (spec から逐語コピー)
+### 要件由来 (依頼文・合意内容・ADR から逐語コピー)
 
-[バージョン下限、依存制約、コピー文言、プラットフォーム要件など。値は spec から **逐語的に** コピー。]
+[バージョン下限、依存制約、コピー文言、プラットフォーム要件、ADR で決めた設計判断など。値は出典から **逐語的に** コピーし、ADR なら path を添える。]
 
 ### PJ 恒久ルール (CLAUDE.md / `.claude/rules/` 由来)
 
@@ -89,7 +89,7 @@ spec が複数の独立サブシステムを含んでいる場合、brainstormin
 
 1. `npm test` 等、PJ の全テストを実行して green を確認
 2. whole-branch cross-review: `BASE=$(git merge-base main HEAD)` からの diff を 1 ファイルにまとめ、新しい subagent に subagent-driven-development の `reviewer.md` で「保守担当 + 攻撃者」視点のレビューをさせる。指摘は直して再レビュー (手順は cross-review スキル)
-   - subagent を派遣できない環境では、自分で spec の各項目と diff を突き合わせ、攻撃者視点の入力例 (不正値・境界値・壊れた保存データ) を試して結果を記録する
+   - subagent を派遣できない環境では、自分で依頼・plan・ADR の各項目と diff を突き合わせ、攻撃者視点の入力例 (不正値・境界値・壊れた保存データ) を試して結果を記録する
 3. branch 上の commit で停止。push / PR / merge はユーザーの指示を待つ
 ```
 
@@ -175,9 +175,9 @@ cross-review スキルの「リスク昇格リスト」(本番データ / DB mig
 
 ## セルフレビュー
 
-plan を書き終わったら、新鮮な目で spec と plan を突き合わせる。これは subagent ではなく自分でやる。
+plan を書き終わったら、新鮮な目で要件と plan を突き合わせる。これは subagent ではなく自分でやる。
 
-1. **spec カバー率:** spec の各セクション / 要件について、対応するタスクを指せるか? 漏れを列挙
+1. **要件カバー率:** 依頼文・合意内容・ADR の各要件について、対応するタスクを指せるか? 漏れを列挙
 2. **placeholder 走査:** 上の「placeholder 禁止」リストに当てはまる箇所を検索 → fix
 3. **型一貫性:** 後タスクで使った型 / signature / プロパティ名が前タスクで定義したものと一致しているか? Task 3 で `clearLayers()` だったのに Task 7 で `clearFullLayers()` になっていたら bug
 4. **PJ 規約整合:** PJ CLAUDE.md / `.claude/rules/` 配下に定義された原則 (例: Fail Fast、命名規約、コミット規約、外部 API の利用方針など) を侵害していないか
@@ -185,7 +185,7 @@ plan を書き終わったら、新鮮な目で spec と plan を突き合わせ
 5. **Gate 付与漏れ:** リスク昇格リストに触れるタスクに `**Gate: human**` が付いているか
 6. **完了後節:** plan の末尾に「完了後」節 (全テスト → whole-branch cross-review → branch 上で停止) があるか
 
-問題を見つけたら直接 inline で fix する。再レビューは不要、直して進む。spec 要件にタスクが対応していなければタスクを足す。
+問題を見つけたら直接 inline で fix する。再レビューは不要、直して進む。要件にタスクが対応していなければタスクを足す。
 
 ## cross-review ゲート (plan)
 
@@ -193,11 +193,11 @@ plan を書き終わったら、新鮮な目で spec と plan を突き合わせ
 
 - **autonomous: 必須**。Approved になるまで実装に引き継がない (最大 3 往復)
 - **guarded:** plan が 5 タスク以上、または複数サブシステムにまたがるときに実施。それ以外は任意
-- 結果は spec の `## 自律判断ログ` に 1 行追記する
+- 結果は plan 末尾の `## 自律判断ログ` に 1 行追記する (autonomous のみ。ログの書式は cross-review スキル 4 節)
 
 ### plan の commit
 
-レビューが Approved になった直後 (レビューをしない guarded ではセルフレビュー直後) に、plan ファイルと spec のログ追記を **1 コミット** にまとめる: `docs(plans): <機能名> の実装プラン`。各タスクの commit には plan を含めない (実装中に plan のチェックボックスを更新する場合も、タスクの commit とは分ける)。
+レビューが Approved になった直後 (レビューをしない guarded ではセルフレビュー直後) に、plan ファイル (自律判断ログを含む) を **1 コミット** にする: `docs(plans): <機能名> の実装プラン`。各タスクの commit には plan を含めない (実装中に plan のチェックボックスを更新する場合も、タスクの commit とは分ける)。
 
 branch / worktree がまだ無い場合 (brainstorming を経由しない単独起動) は、下の「実装への引き継ぎ」で branch / worktree を用意してから、その上でこの commit をする。main には commit しない。
 
@@ -214,7 +214,7 @@ branch / worktree がまだ無い場合 (brainstorming を経由しない単独�
 
 ### brainstorming を経由せず writing-plans 単独起動した場合
 
-spec / 要件はあるが brainstorming スキップで来た場合、guarded ならここで `AskUserQuestion` で 4 択を提示する。autonomous なら聞かず、brainstorming の「autonomous での機械的決定」(独立タスク 3 つ以上 → SDD / 作業ツリーが汚れている・並行作業あり → worktree) で決めて進む:
+要件はあるが brainstorming スキップで来た場合、guarded ならここで `AskUserQuestion` で 4 択を提示する。autonomous なら聞かず、brainstorming の「autonomous での機械的決定」(独立タスク 3 つ以上 → SDD / 作業ツリーが汚れている・並行作業あり → worktree) で決めて進む:
 
 > plan を `.claude/plans/<filename>.md` に書きました。実装方式を選んでください (隔離 × 並列の 2 軸):
 >
