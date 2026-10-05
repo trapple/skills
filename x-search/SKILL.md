@@ -1,6 +1,7 @@
 ---
 name: x-search
-description: xAI 公式 CLI「Grok Build」(`grok` コマンド) のサーバーサイド x_search ツールをヘッドレスモードで呼び出して X (Twitter) を Grok で検索する。Grok による検索結果分析が Markdown (脚注付き URL 引用) で返る。Use when user says "x_search", "x-search", "xサーチ", "Xで検索", "Xで調べて", "X検索", "ツイッターで調べて", "Twitterで調べて", "Grok で X を検索", or asks to look up trending posts / sentiment / discussions on X.
+description: Search X (Twitter) with Grok via the xAI "Grok Build" CLI (`grok`) in headless mode, using its server-side x_search tool. Returns Grok's Markdown analysis with footnoted URL citations. Manual invocation only (/x-search); for ordinary "search X" requests use yahoo-realtime-search.
+disable-model-invocation: true
 ---
 
 # x-search

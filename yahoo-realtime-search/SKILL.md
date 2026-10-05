@@ -1,6 +1,6 @@
 ---
 name: yahoo-realtime-search
-description: Search recent posts on X (Twitter) via Yahoo! JAPAN Realtime Search (search.yahoo.co.jp/realtime) without an X / xAI account or API key. Returns raw posts (text, author, JST timestamp, likes / reposts / replies, URL) by newest or by popularity, for Claude to summarize. Use when user says "yahooリアルタイム検索", "Yahooリアルタイム", "リアルタイム検索で", "Yahoo で X を検索", "yahoo-realtime-search", or wants raw recent X posts / reactions without using Grok.
+description: Search recent posts on X (Twitter) via Yahoo! JAPAN Realtime Search (search.yahoo.co.jp/realtime) without an X / xAI account or API key. Returns raw posts (text, author, JST timestamp, likes / reposts / replies, URL) by newest or by popularity, for Claude to summarize. Default skill for searching X. Use when user says "Xで検索", "Xで調べて", "X検索", "Xを検索して", "ツイッターで調べて", "Twitterで調べて", "yahooリアルタイム検索", "Yahooリアルタイム", "リアルタイム検索で", "yahoo-realtime-search", or asks to look up recent posts / reactions / discussions on X. (The Grok-based x-search skill is manual-only via /x-search.)
 argument-hint: "<検索語> [--sort time|popular] [--limit N]"
 ---
 
@@ -17,7 +17,7 @@ Yahoo!リアルタイム検索 (`https://search.yahoo.co.jp/realtime/search`) �
 | 前提 | なし | `grok` CLI とログイン |
 | 向いている用途 | 直近の反応をそのまま見たい、件数や反応数で比べたい | 論点整理や傾向の分析まで任せたい |
 
-ユーザーが「Xで調べて」とだけ言った場合は `x-search` が担当する。Yahoo!リアルタイム検索を名指ししたとき、または Grok を使わずに生の投稿を見たいときにこのスキルを使う。
+「Xで検索して」「Xで調べて」など X の検索を頼まれたときは、このスキルを使う。`x-search` は手動起動専用 (`disable-model-invocation: true`) で、ユーザーが `/x-search` と明示したときだけ動く。Grok による分析が必要そうな依頼でも勝手に切り替えず、必要なら「`/x-search` で Grok に分析させることもできる」と一言添える。
 
 ## 実行方法
 
